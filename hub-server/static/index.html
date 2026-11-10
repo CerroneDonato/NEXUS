@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily Hub</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="login" class="login hidden">
+    <form id="login-form">
+      <h1>Daily Hub</h1>
+      <p>Inserisci il token API (HUB_API_TOKEN nel file .env).</p>
+      <input id="login-token" type="password" autocomplete="off" required>
+      <button type="submit">Entra</button>
+    </form>
+  </div>
+
+  <main id="app" class="hidden">
+    <header class="top">
+      <div>
+        <div id="clock" class="clock">--:--</div>
+        <div id="date" class="date"></div>
+      </div>
+      <div id="alarm" class="alarm"></div>
+    </header>
+
+    <section class="grid">
+      <article class="card weather">
+        <h2>Meteo <span id="weather-city"></span></h2>
+        <div id="weather-body" class="weather-body"></div>
+        <div id="hourly" class="hourly"></div>
+      </article>
+
+      <article class="card events">
+        <h2>Calendario di oggi</h2>
+        <ul id="events" class="list"></ul>
+      </article>
+
+      <article class="card tasks">
+        <h2>Task</h2>
+        <form id="task-form" class="task-form">
+          <input id="task-title" placeholder="Nuovo task..." maxlength="200" required>
+          <input id="task-due" type="date">
+          <button type="submit">Aggiungi</button>
+        </form>
+        <ul id="tasks" class="list"></ul>
+      </article>
+    </section>
+
+    <footer id="status" class="status"></footer>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
