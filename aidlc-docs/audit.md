@@ -65,3 +65,11 @@ To-do's from the plan have already been created. Do not create them again. Mark 
 **Context**: CONSTRUCTION - Build and Test
 
 ---
+
+## Publish to GitHub
+**Timestamp**: 2026-11-10T21:29:00Z
+**User Input**: "Usa questa in cui caricare i file  https://github.com/CerroneDonato/NEXUS"
+**AI Response**: "Set origin to that repo, merged the unrelated initial commit (README stub # NEXUS), kept the Daily Hub README. git push rejected with HTTP 403; local main is ahead and ready to push once GitHub write access is authenticated."
+**Context**: Deployment
+
+---
