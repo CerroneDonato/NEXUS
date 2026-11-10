@@ -73,3 +73,11 @@ To-do's from the plan have already been created. Do not create them again. Mark 
 **Context**: Deployment
 
 ---
+
+## Transfer via Drive
+**Timestamp**: 2026-11-10T21:39:00Z
+**User Input**: "Mi sa che le sposto in drive e faccio il push da un altro pc"
+**AI Response**: "Confirmed. Created Desktop zip ADayInALife-NEXUS.zip excluding .venv. Other PC unzips and runs git push -u origin main while authenticated as CerroneDonato. Drive is only the ferry; afterwards clone from GitHub."
+**Context**: Deployment
+
+---
