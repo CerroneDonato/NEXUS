@@ -60,16 +60,23 @@ Consigli:
 
 ## 5. Test manuale
 
+Esegui questi comandi **dalla cartella del repo** (quella che contiene `scripts`). `show_dashboard.ps1` crea `.env` se manca, avvia il server e apre Edge a schermo intero. Per uscire: Alt+F4.
+
 ```powershell
-# Mostra subito la dashboard a schermo intero (Alt+F4 per uscire)
+cd $HOME\ADayInALife
 powershell -ExecutionPolicy Bypass -File scripts\windows\show_dashboard.ps1
 
-# Programma un risveglio fra 3 minuti, poi metti il PC in sospensione
 $at = (Get-Date).AddMinutes(3).ToString('yyyy-MM-ddTHH:mm:ss')
 powershell -ExecutionPolicy Bypass -File scripts\windows\schedule_wake.ps1 -At $at
 ```
 
+Poi Start -> Sospendi (non Arresta il sistema). Allo scadere dei 3 minuti il PC si riattiva e la dashboard torna a schermo intero. `schedule_wake.ps1` abilita anche i timer di riattivazione di Windows.
+
 ## 6. Aggiornamenti dal PC di sviluppo
+
+Se `git push` da questo PC risponde HTTP 403, le credenziali salvate non sono l'account `CerroneDonato`. In alternativa copia sul PC dell'hub lo zip preparato sul Desktop (`ADayInALife-NEXUS.zip`, senza `.venv` e senza `.env`) e sostituisci la cartella del repo tenendo `hub-server\.env` e `hub-server\.venv`.
+
+## 7. Aggiornamenti con git, quando il push funziona
 
 ```powershell
 # Manuale

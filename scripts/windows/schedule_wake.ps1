@@ -19,7 +19,12 @@ if ($Cancel) {
 }
 
 if (-not $At) { throw 'Specify -At <yyyy-MM-ddTHH:mm:ss> or -Cancel' }
-$when = [datetime]::ParseExact($At, 'yyyy-MM-ddTHH:mm:ss', [Globalization.CultureInfo]::InvariantCulture)
+try {
+    $when = [datetime]::ParseExact($At, 'yyyy-MM-ddTHH:mm:ss', [Globalization.CultureInfo]::InvariantCulture)
+} catch {
+    $when = [datetime]::Parse($At, [Globalization.CultureInfo]::CurrentCulture)
+}
+Enable-WakeTimers
 
 $script = Join-Path $PSScriptRoot 'wake_and_show.ps1'
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' `

@@ -81,3 +81,11 @@ To-do's from the plan have already been created. Do not create them again. Mark 
 **Context**: Deployment
 
 ---
+
+## Dashboard and wake scripts failed
+**Timestamp**: 2026-11-10T22:18:00Z
+**User Input**: "Dobbiamo trovare un modo per pushare le modifiche perche show_dashboard.ps1 e schedule_wake.ps1 non funzionano"
+**AI Response**: "show_dashboard aborted because Get-NetTCPConnection could not load and the DailyHub Server task did not exist. Removed that cmdlet, start python directly, enable wake timers inside schedule_wake.ps1. GitHub push still unavailable from this PC; refreshed the Drive zip."
+**Context**: Bugfix
+
+---
