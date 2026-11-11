@@ -34,7 +34,7 @@ def test_dashboard_is_served_without_token(client):
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "Daily Hub" in response.text
+    assert "<title>NEXUS</title>" in response.text
     assert response.headers["Cache-Control"] == "no-cache"
     assert client.get("/static/app.js").status_code == 200
 

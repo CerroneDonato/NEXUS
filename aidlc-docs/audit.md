@@ -89,3 +89,11 @@ To-do's from the plan have already been created. Do not create them again. Mark 
 **Context**: Bugfix
 
 ---
+
+## Redesign and wake delay
+**Timestamp**: 2026-11-11T10:05:00Z
+**User Input**: "In realta funzionava anche senza la modifica. Nell ultimo commit ho cercato di sistemare il fatto che l'app sul pc hub si aprisse solo dopo un lungo ritardo dopo la sveglia e ho cercato di, ragionando come un grapgic designer far migliorare la grafica ad un IA. Ma si e rotto tutto. Puoi pensrci tu. Voglio una grafica molto accattivante e funzionale per il widget e per l'app su pc. Qualcosa che mi faccia sembrare un vero pro. L'ideale sarebbe sincronizzare lo sfondo con il meteo"
+**AI Response**: "Root cause of the breakage: the remote commit swapped the contents of index.html, app.js and style.css. Rewrote the dashboard: weather-synced animated sky (canvas rain/snow/stars/clouds/lightning, day/night/dawn/dusk themes), glass panels, 12h temperature/rain chart, agenda timeline with next/ongoing card, task stats, resume-aware refresh. Wake delay: display woken first, existing kiosk reused via PID file (no WMI scan), health checks on 127.0.0.1 instead of localhost (IPv6 timeout), wake task time limit raised to 45 min, WAKE_LEAD_MINUTES default 2. Android widget redesigned with 8 weather gradient backgrounds, vector weather icons, focus event card and task chips. Evidence: pytest 19 passed, browser smoke screenshots (rain and clear themes), 23 drawables XML-valid. Android build not run (no SDK on this PC)."
+**Context**: Construction - redesign and bugfix
+
+---

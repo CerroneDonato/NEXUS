@@ -82,7 +82,7 @@ function Wait-HubReady {
     $started = $false
     while ((Get-Date) -lt $deadline) {
         try {
-            Invoke-WebRequest -Uri "http://localhost:$port/api/health" -UseBasicParsing -TimeoutSec 2 | Out-Null
+            Invoke-WebRequest -Uri "http://127.0.0.1:$port/api/health" -UseBasicParsing -TimeoutSec 2 | Out-Null
             return $true
         } catch {
             if (-not $started) {

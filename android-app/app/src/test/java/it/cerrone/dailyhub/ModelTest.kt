@@ -1,18 +1,24 @@
 package it.cerrone.dailyhub
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.ZoneId
 
 class ModelTest {
     private val sample = """
-        {"date":"2026-11-10","weather":{"city":"Milano","current":{"temperature":9.4,"description":"Coperto"},
+        {"date":"2026-11-10","weather":{"city":"Milano","current":{"temperature":9.4,"description":"Coperto",
+         "icon":"rain","isDay":false},
          "today":{"min":6.1,"max":14.2,"precipitationProbability":70}},"weatherError":null,
-         "events":[{"title":"Riunione","start":"2026-11-10T10:00:00+01:00","allDay":false},
-                   {"title":"Compleanno","start":"2026-11-10","allDay":true}],
+         "events":[{"title":"Compleanno","start":"2026-11-10","end":"2026-11-11","allDay":true,"location":null},
+                   {"title":"Riunione","start":"2026-11-10T10:00:00+01:00","end":"2026-11-10T11:00:00+01:00",
+                    "allDay":false,"location":"Sala Duomo"},
+                   {"title":"Palestra","start":"2026-11-10T18:30:00+01:00","end":"2026-11-10T19:30:00+01:00",
+                    "allDay":false,"location":null}],
          "calendarError":null,
          "tasks":[{"id":1,"title":"Latte","due":"2026-11-09","done":false,"overdue":true},
                   {"id":2,"title":"Palestra","due":null,"done":false,"overdue":false}],
@@ -26,12 +32,43 @@ class ModelTest {
         assertEquals(LocalDate.of(2026, 11, 10), snapshot.date)
         assertEquals("Milano", snapshot.weather?.city)
         assertEquals(70, snapshot.weather?.precipitationProbability)
-        assertEquals(2, snapshot.events.size)
-        assertEquals("Tutto il giorno", snapshot.events[1].timeLabel)
+        assertEquals("rain", snapshot.weather?.icon)
+        assertEquals(false, snapshot.weather?.isDay)
+        assertEquals(3, snapshot.events.size)
+        assertEquals("Tutto il giorno", snapshot.events[0].timeLabel)
+        assertEquals("Sala Duomo", snapshot.events[1].location)
+        assertNull(snapshot.events[2].location)
         assertTrue(snapshot.tasks[0].overdue)
         assertNull(snapshot.tasks[1].due)
         assertNull(snapshot.weatherError)
         assertEquals("2026-11-11T07:00:00+01:00", snapshot.nextAlarm)
+    }
+
+    @Test
+    fun skyFor_followsWeatherAndDaylight() {
+        assertEquals(Sky.CLEAR_DAY, skyFor("clear", isDay = true))
+        assertEquals(Sky.CLEAR_NIGHT, skyFor("partly-cloudy", isDay = false))
+        assertEquals(Sky.RAIN, skyFor("drizzle", isDay = true))
+        assertEquals(Sky.STORM, skyFor("storm", isDay = false))
+        assertEquals(Sky.CLOUDY_NIGHT, skyFor(null, isDay = false))
+    }
+
+    @Test
+    fun focusEvent_prefersOngoingThenNextAndSkipsAllDay() {
+        val events = parseToday(sample).events
+
+        val during = focusEvent(events, OffsetDateTime.parse("2026-11-10T10:30:00+01:00"))
+        assertEquals("Riunione", during?.event?.title)
+        assertTrue(during!!.ongoing)
+
+        val before = focusEvent(events, OffsetDateTime.parse("2026-11-10T08:00:00+01:00"))
+        assertEquals("Riunione", before?.event?.title)
+        assertFalse(before!!.ongoing)
+
+        val afternoon = focusEvent(events, OffsetDateTime.parse("2026-11-10T12:00:00+01:00"))
+        assertEquals("Palestra", afternoon?.event?.title)
+
+        assertNull(focusEvent(events, OffsetDateTime.parse("2026-11-10T21:00:00+01:00")))
     }
 
     @Test

@@ -1,63 +1,456 @@
-<!doctype html>
-<html lang="it">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Daily Hub</title>
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body data-weather="clear">
-  <div class="sky-glow sky-glow-1"></div>
-  <div class="sky-glow sky-glow-2"></div>
-  <div class="sky-glow sky-glow-3"></div>
+:root {
+  --sky-top: #0b1830;
+  --sky-mid: #1d3a63;
+  --sky-bottom: #3d5f8a;
+  --sun: 255, 214, 120;
+  --sun-opacity: 0;
+  --sun-x: 78%;
+  --sun-y: 18%;
+  --accent: #7cc7ff;
+  --accent-2: #b4e3ff;
+  --text: #f4f7ff;
+  --text-2: rgba(244, 247, 255, 0.74);
+  --text-3: rgba(244, 247, 255, 0.5);
+  --glass: rgba(12, 18, 32, 0.38);
+  --glass-strong: rgba(10, 15, 28, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-highlight: rgba(255, 255, 255, 0.08);
+  --warn: #ff9b7a;
+  --ok: #7fe0a8;
+  --radius: 28px;
+  font-family: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
 
-  <div id="login" class="login hidden">
-    <form id="login-form">
-      <h1>Daily Hub</h1>
-      <p>Inserisci il token API (HUB_API_TOKEN nel file .env).</p>
-      <input id="login-token" type="password" autocomplete="off" required>
-      <button type="submit">Entra</button>
-    </form>
-  </div>
+body[data-theme="day-clear"]   { --sky-top: #1c64b8; --sky-mid: #4a9be0; --sky-bottom: #a9d6f5; --sun-opacity: 1; --accent: #ffd37a; --accent-2: #fff1c9; }
+body[data-theme="day-partly"]  { --sky-top: #2a5f9e; --sky-mid: #5d8fc4; --sky-bottom: #b7cfe6; --sun-opacity: 0.7; --accent: #ffd37a; --accent-2: #fff1c9; }
+body[data-theme="day-cloudy"]  { --sky-top: #3b4a5c; --sky-mid: #647689; --sky-bottom: #9aa8b6; --accent: #cfe3ff; --accent-2: #eef5ff; }
+body[data-theme="night-clear"] { --sky-top: #03060f; --sky-mid: #0b1733; --sky-bottom: #1d2f57; --accent: #9fb7ff; --accent-2: #d6e0ff; }
+body[data-theme="night-partly"]{ --sky-top: #060b17; --sky-mid: #142240; --sky-bottom: #2b3d60; --accent: #9fb7ff; --accent-2: #d6e0ff; }
+body[data-theme="night-cloudy"]{ --sky-top: #0c1119; --sky-mid: #1c2533; --sky-bottom: #323d4d; --accent: #a9bfd9; --accent-2: #dbe6f3; }
+body[data-theme="rain"]        { --sky-top: #142131; --sky-mid: #2b3e52; --sky-bottom: #4f6274; --accent: #7cc7ff; --accent-2: #c3e6ff; }
+body[data-theme="storm"]       { --sky-top: #080b14; --sky-mid: #1b2233; --sky-bottom: #39405a; --accent: #c2a6ff; --accent-2: #e4d8ff; }
+body[data-theme="snow"]        { --sky-top: #3f5470; --sky-mid: #7d93ad; --sky-bottom: #d6e2ee; --accent: #e4f1ff; --accent-2: #ffffff; }
+body[data-theme="fog"]         { --sky-top: #49535c; --sky-mid: #7b858c; --sky-bottom: #b4b9bb; --accent: #e6eef2; --accent-2: #ffffff; }
+body[data-theme="dawn"]        { --sky-top: #24305e; --sky-mid: #c06c84; --sky-bottom: #f8b195; --sun-opacity: 0.9; --sun: 255, 170, 120; --sun-y: 70%; --accent: #ffc49b; --accent-2: #ffe4d1; }
+body[data-theme="dusk"]        { --sky-top: #1b1f45; --sky-mid: #6c3a74; --sky-bottom: #f28f6b; --sun-opacity: 0.85; --sun: 255, 140, 100; --sun-x: 22%; --sun-y: 72%; --accent: #ffb38a; --accent-2: #ffdcc8; }
+body[data-night="true"][data-theme="rain"],
+body[data-night="true"][data-theme="snow"],
+body[data-night="true"][data-theme="fog"],
+body[data-night="true"][data-theme="storm"] { --sky-top: #05080f; --sky-mid: #121a28; --sky-bottom: #2a3444; }
 
-  <main id="app" class="hidden">
-    <header class="top">
-      <div class="top-copy">
-        <div id="clock" class="clock">--:--</div>
-        <div id="date" class="date"></div>
-      </div>
-      <div id="alarm" class="alarm"></div>
-    </header>
+* { box-sizing: border-box; }
 
-    <section class="grid">
-      <article class="card weather">
-        <div class="weather-header">
-          <h2>Meteo <span id="weather-city"></span></h2>
-          <div class="weather-badge" id="weather-badge">Oggi</div>
-        </div>
-        <div id="weather-body" class="weather-body"></div>
-        <div id="hourly" class="hourly"></div>
-      </article>
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #05080f;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
 
-      <article class="card events">
-        <h2>Calendario di oggi</h2>
-        <ul id="events" class="list"></ul>
-      </article>
+.hidden { display: none !important; }
 
-      <article class="card tasks">
-        <h2>Task</h2>
-        <form id="task-form" class="task-form">
-          <input id="task-title" placeholder="Nuovo task..." maxlength="200" required>
-          <input id="task-due" type="date">
-          <button type="submit">Aggiungi</button>
-        </form>
-        <ul id="tasks" class="list"></ul>
-      </article>
-    </section>
+/* ---------- Sky ---------- */
 
-    <footer id="status" class="status"></footer>
-  </main>
+.sky { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 
-  <script src="/static/app.js"></script>
-</body>
-</html>
+.sky-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 55%, var(--sky-bottom) 100%);
+  transition: background 2s ease;
+}
+
+.sky-sun {
+  position: absolute;
+  left: var(--sun-x);
+  top: var(--sun-y);
+  width: 70vmin;
+  height: 70vmin;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(var(--sun), 0.85) 0%, rgba(var(--sun), 0.35) 12%, rgba(var(--sun), 0.08) 38%, transparent 65%);
+  opacity: var(--sun-opacity);
+  transition: opacity 2s ease, left 2s ease, top 2s ease;
+  animation: sun-breathe 9s ease-in-out infinite alternate;
+}
+
+#sky-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.sky-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 60% 10%, rgba(220, 225, 255, 0.55), rgba(180, 190, 255, 0.1) 60%, transparent);
+  opacity: 0;
+}
+.sky-flash.on { animation: flash 0.9s ease-out; }
+
+.sky-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 120%, rgba(0, 0, 0, 0.45), transparent 60%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.35), transparent 35%, transparent 65%, rgba(0, 0, 0, 0.25));
+}
+
+@keyframes sun-breathe { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(1.06); } }
+@keyframes flash { 0% { opacity: 0; } 8% { opacity: 1; } 20% { opacity: 0.2; } 30% { opacity: 0.8; } 100% { opacity: 0; } }
+
+/* ---------- Glass ---------- */
+
+.glass {
+  background: linear-gradient(160deg, var(--glass-highlight), transparent 40%), var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(22px) saturate(1.3);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* ---------- Layout ---------- */
+
+.app {
+  position: relative;
+  z-index: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 2.6vh 2.6vw 3vh;
+  gap: 2.2vh;
+}
+
+.topbar { display: flex; justify-content: space-between; align-items: center; }
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  font-size: clamp(0.8rem, 1.5vh, 1rem);
+  color: var(--text-2);
+}
+
+.brand-mark {
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 50%;
+  background: conic-gradient(from 210deg, var(--accent), var(--accent-2), var(--accent));
+  box-shadow: 0 0 18px var(--accent);
+}
+
+.chips { display: flex; gap: 0.6rem; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  font-size: clamp(0.8rem, 1.5vh, 0.98rem);
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+}
+.chip:empty { display: none; }
+.chip svg { width: 1.1em; height: 1.1em; }
+
+.chip-status .dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+.chip-status.error .dot { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
+
+.layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 1.6vw;
+}
+
+/* ---------- Hero ---------- */
+
+.hero { display: flex; flex-direction: column; min-height: 0; padding: 0 0.5vw; }
+
+.greeting {
+  font-size: clamp(1rem, 2.4vh, 1.6rem);
+  color: var(--accent-2);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.clock {
+  font-size: clamp(5rem, 17vh, 13rem);
+  font-weight: 200;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  margin-top: 0.4vh;
+}
+.clock-s { font-size: 0.24em; letter-spacing: 0; margin-left: 0.4em; color: var(--text-3); font-weight: 300; vertical-align: 0.15em; }
+
+.date { font-size: clamp(1.1rem, 2.8vh, 1.9rem); color: var(--text-2); text-transform: capitalize; margin-top: 0.6vh; }
+
+.summary {
+  margin: 2vh 0 0;
+  font-size: clamp(0.95rem, 2.05vh, 1.3rem);
+  line-height: 1.5;
+  color: var(--text);
+  max-width: 34em;
+}
+.summary b { color: var(--accent-2); font-weight: 600; }
+
+.weather-hero { display: flex; align-items: center; gap: 1.4vw; margin-top: 2.6vh; }
+.wx-icon svg { width: clamp(84px, 14vh, 150px); height: clamp(84px, 14vh, 150px); filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 0.3)); }
+.wx-temp { font-size: clamp(3.4rem, 10vh, 7rem); font-weight: 200; line-height: 1; letter-spacing: -0.04em; }
+.wx-temp .deg { color: var(--accent); }
+.wx-desc { font-size: clamp(1rem, 2.3vh, 1.5rem); font-weight: 500; }
+.wx-city { font-size: clamp(0.8rem, 1.6vh, 1rem); color: var(--text-3); letter-spacing: 0.18em; text-transform: uppercase; margin-top: 0.3vh; }
+
+.wx-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1vh 1vw;
+  margin-top: 2.2vh;
+}
+.stat { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.stat svg { width: 1.35em; height: 1.35em; flex: none; color: var(--accent); }
+.stat-label { font-size: clamp(0.7rem, 1.35vh, 0.85rem); color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; }
+.stat-value { font-size: clamp(0.95rem, 2vh, 1.25rem); font-variant-numeric: tabular-nums; }
+
+.forecast { margin-top: auto; padding: 1.8vh 1.4vw 1.4vh; }
+.forecast-body { position: relative; }
+.forecast-body svg.chart { width: 100%; height: clamp(90px, 13vh, 150px); display: block; overflow: visible; }
+.chart-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25)); }
+.chart-dot { fill: var(--accent-2); stroke: rgba(0, 0, 0, 0.25); stroke-width: 1; }
+.chart-bar { fill: rgba(124, 199, 255, 0.45); }
+.chart-label { fill: var(--text); font-size: 12px; text-anchor: middle; font-variant-numeric: tabular-nums; }
+.forecast-hours { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); text-align: center; margin-top: 0.4vh; }
+.forecast-hours div { font-size: clamp(0.66rem, 1.3vh, 0.85rem); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.forecast-hours svg { width: 1.6em; height: 1.6em; display: block; margin: 0.2rem auto 0; }
+.legend { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: var(--text-3); }
+.legend i { display: inline-block; width: 0.9rem; height: 0.25rem; border-radius: 2px; }
+.legend-temp { background: var(--accent); }
+.legend-rain { background: rgba(124, 199, 255, 0.6); margin-left: 0.5rem; }
+
+/* ---------- Cards ---------- */
+
+.card { display: flex; flex-direction: column; min-height: 0; padding: 2.6vh 1.6vw; }
+
+.card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.6vh; }
+.card-head h2 {
+  margin: 0;
+  font-size: clamp(0.78rem, 1.5vh, 0.95rem);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.pill {
+  font-size: clamp(0.75rem, 1.4vh, 0.9rem);
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-2);
+}
+.pill:empty { display: none; }
+
+/* ---------- Agenda ---------- */
+
+.next-event {
+  border-radius: 20px;
+  padding: 1.8vh 1.2vw;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  margin-bottom: 2vh;
+}
+.next-event:empty { display: none; }
+.next-label { font-size: clamp(0.72rem, 1.4vh, 0.88rem); letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+.next-title { font-size: clamp(1.15rem, 2.8vh, 1.8rem); font-weight: 600; margin-top: 0.6vh; line-height: 1.2; }
+.next-meta { font-size: clamp(0.85rem, 1.8vh, 1.1rem); color: var(--text-2); margin-top: 0.5vh; }
+.next-countdown { float: right; font-variant-numeric: tabular-nums; color: var(--accent-2); font-weight: 600; }
+
+.timeline { list-style: none; margin: 0; padding: 0 0 0 0.3rem; overflow-y: auto; flex: 1; min-height: 0; scrollbar-width: none; }
+.timeline::-webkit-scrollbar { display: none; }
+.timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4.6rem 1fr;
+  gap: 1rem;
+  padding: 0 0 2vh 0;
+}
+.timeline li::before {
+  content: "";
+  position: absolute;
+  left: 5.35rem;
+  top: 0.55em;
+  bottom: -0.2em;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.timeline li:last-child::before { display: none; }
+.timeline li::after {
+  content: "";
+  position: absolute;
+  left: calc(5.35rem - 5px);
+  top: 0.35em;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--glass-strong);
+  border: 2px solid var(--accent);
+}
+.timeline li.past { opacity: 0.45; }
+.timeline li.past::after { border-color: var(--text-3); }
+.timeline li.now::after { background: var(--accent); box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08), 0 0 16px var(--accent); }
+.tl-time { font-size: clamp(0.9rem, 1.9vh, 1.15rem); font-variant-numeric: tabular-nums; color: var(--accent-2); text-align: right; padding-right: 1.1rem; }
+.tl-time small { display: block; color: var(--text-3); font-size: 0.8em; }
+.tl-body { padding-left: 0.9rem; min-width: 0; }
+.tl-title { font-size: clamp(1rem, 2.2vh, 1.35rem); line-height: 1.25; overflow-wrap: anywhere; }
+.tl-sub { font-size: clamp(0.78rem, 1.6vh, 0.98rem); color: var(--text-3); margin-top: 0.2rem; }
+.badge { display: inline-block; font-size: 0.7em; padding: 0.15rem 0.5rem; border-radius: 999px; background: var(--accent); color: #0a1220; font-weight: 700; margin-left: 0.4rem; vertical-align: 0.15em; letter-spacing: 0.04em; }
+
+.empty-state { color: var(--text-2); font-size: clamp(0.95rem, 2vh, 1.2rem); padding: 1vh 0; }
+.empty-state small { display: block; color: var(--text-3); margin-top: 0.4rem; font-size: 0.85em; }
+li.empty-state { display: block; border: 0; }
+li.empty-state::before, li.empty-state::after { display: none; }
+.error-text { color: var(--warn); }
+
+/* ---------- Tasks ---------- */
+
+.task-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7vw; margin-bottom: 1.8vh; }
+.task-stat { border-radius: 16px; padding: 1.2vh 0.8vw; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.1); }
+.task-stat strong { display: block; font-size: clamp(1.4rem, 3.4vh, 2.2rem); font-weight: 300; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.task-stat span { font-size: clamp(0.68rem, 1.3vh, 0.82rem); color: var(--text-3); text-transform: uppercase; letter-spacing: 0.1em; }
+.task-stat.warn strong { color: var(--warn); }
+.task-stat.ok strong { color: var(--ok); }
+
+.task-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.4vh;
+  padding: 0.35rem;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.task-form input {
+  font: inherit;
+  font-size: clamp(0.9rem, 1.9vh, 1.1rem);
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 0.55rem 0.7rem;
+  outline: none;
+  min-width: 0;
+}
+.task-form #task-title { flex: 1; }
+.task-form #task-due { width: 9.5rem; color: var(--text-2); }
+.task-form input::placeholder { color: var(--text-3); }
+.task-form input::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.6; cursor: pointer; }
+
+.btn-primary {
+  font: inherit;
+  font-weight: 700;
+  border: none;
+  border-radius: 14px;
+  padding: 0.55rem 1.1rem;
+  cursor: pointer;
+  color: #0a1220;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.task-form .btn-primary { font-size: 1.3rem; line-height: 1; padding: 0 1rem; }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:active { transform: scale(0.96); }
+
+.task-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 0; scrollbar-width: none; }
+.task-list::-webkit-scrollbar { display: none; }
+.task-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.2vh 0.4rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.task-list li:last-child { border-bottom: none; }
+.task-list li.leaving { opacity: 0; transform: translateX(24px); }
+.task-list li.overdue .task-title { color: #ffd9cc; }
+
+.check {
+  flex: none;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+.check:hover { border-color: var(--accent); background: rgba(255, 255, 255, 0.08); }
+.check svg { width: 0.9rem; height: 0.9rem; opacity: 0; color: #0a1220; transition: opacity 0.2s ease; }
+.task-list li.leaving .check { background: var(--ok); border-color: var(--ok); }
+.task-list li.leaving .check svg { opacity: 1; }
+
+.task-title { flex: 1; min-width: 0; font-size: clamp(1rem, 2.1vh, 1.3rem); line-height: 1.3; overflow-wrap: anywhere; }
+.due {
+  flex: none;
+  font-size: clamp(0.72rem, 1.45vh, 0.9rem);
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.due.today { background: rgba(127, 224, 168, 0.18); color: var(--ok); }
+.due.overdue { background: rgba(255, 155, 122, 0.18); color: var(--warn); }
+
+.delete {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  opacity: 0;
+  padding: 0.2rem;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+.delete svg { width: 1.05rem; height: 1.05rem; }
+.task-list li:hover .delete { opacity: 1; }
+.delete:hover { color: var(--warn); }
+
+/* ---------- Login ---------- */
+
+.login { position: relative; z-index: 1; height: 100vh; display: grid; place-items: center; }
+.login-card { width: min(420px, 90vw); padding: 2.2rem; display: flex; flex-direction: column; gap: 1rem; }
+.login-card p { margin: 0; color: var(--text-2); }
+.login-card input {
+  font: inherit;
+  padding: 0.8rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1100px) {
+  html, body { overflow: auto; }
+  .app { height: auto; min-height: 100vh; }
+  .layout { grid-template-columns: 1fr; }
+  .card { min-height: 40vh; }
+  .forecast { margin-top: 2.4vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sky-sun { animation: none; }
+}

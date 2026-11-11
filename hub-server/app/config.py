@@ -33,7 +33,7 @@ class Settings:
     google_client_secret_file: Path = SERVER_DIR / "secrets" / "client_secret.json"
     google_token_file: Path = SERVER_DIR / "secrets" / "google_token.json"
     calendar_ids: tuple[str, ...] = field(default_factory=lambda: ("primary",))
-    wake_lead_minutes: int = 0
+    wake_lead_minutes: int = 2
     wake_enabled: bool = True
 
     @property
@@ -64,6 +64,6 @@ def load_settings() -> Settings:
         calendar_ids=tuple(
             cid.strip() for cid in os.environ.get("GOOGLE_CALENDAR_IDS", "primary").split(",") if cid.strip()
         ),
-        wake_lead_minutes=int(os.environ.get("WAKE_LEAD_MINUTES", "0")),
+        wake_lead_minutes=int(os.environ.get("WAKE_LEAD_MINUTES", "2")),
         wake_enabled=_as_bool(os.environ.get("WAKE_ENABLED", "true")),
     )
