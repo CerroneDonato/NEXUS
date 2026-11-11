@@ -24,4 +24,4 @@ Si apre il browser: accedi e accetta (vedrai l'avviso "app non verificata": è l
 ## Note
 
 - In modalità Test, Google può far scadere il refresh token dopo 7 giorni. Se la dashboard mostra "Token Google non valido", ripeti il passo 6. Per evitarlo, nella schermata consenso puoi cliccare **Pubblica app**: per un'app con un solo utente non serve la verifica Google, comparirà solo l'avviso "non verificata" al login.
-- Per mostrare più calendari imposta in `.env` `GOOGLE_CALENDAR_IDS=primary,<id-calendario>` (l'ID si trova in Google Calendar -> Impostazioni del calendario -> Integra calendario).
+- Con `GOOGLE_CALENDAR_IDS=primary` (il default) la dashboard legge tutti i calendari spuntati in Google Calendar, non solo quello principale. Per limitare l'elenco imposta gli ID espliciti: `GOOGLE_CALENDAR_IDS=primary,<id-calendario>` (l'ID si trova in Google Calendar -> Impostazioni del calendario -> Integra calendario).

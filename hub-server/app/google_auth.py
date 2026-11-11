@@ -16,7 +16,9 @@ def main() -> None:
             f"File OAuth non trovato: {secret_file}\nVedi docs/google-calendar-setup.md per scaricarlo."
         )
     flow = InstalledAppFlow.from_client_secrets_file(str(secret_file), SCOPES)
-    creds = flow.run_local_server(port=0, prompt="consent")
+    # select_account so a second Google login is not skipped when the browser
+    # is already signed in as the previous account.
+    creds = flow.run_local_server(port=0, prompt="select_account consent")
     settings.google_token_file.parent.mkdir(parents=True, exist_ok=True)
     settings.google_token_file.write_text(creds.to_json(), encoding="utf-8")
     print(f"Token salvato in {settings.google_token_file}")

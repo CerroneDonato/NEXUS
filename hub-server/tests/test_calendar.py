@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.calendar_client import normalize_event, sort_events
+from app.calendar_client import normalize_event, sort_events, visible_calendars
 
 
 def test_normalize_timed_and_all_day_events():
@@ -26,3 +26,18 @@ def test_all_day_events_come_first():
     ordered = sort_events(events)
 
     assert [e["start"] for e in ordered] == ["2026-11-10", "2026-11-10T08:00:00+01:00", "2026-11-10T09:00:00+01:00"]
+
+
+def test_visible_calendars_keeps_only_checked_ones():
+    items = [
+        {"id": "primary-id", "summary": "Donato", "selected": True, "primary": True},
+        {"id": "work@group.calendar.google.com", "summary": "Lavoro", "selected": True},
+        {"id": "hidden@group.calendar.google.com", "summary": "Vecchio", "selected": False},
+        {"id": "it.italian#holiday@group.calendar.google.com", "summary": "Festività", "selected": True},
+    ]
+
+    assert visible_calendars(items) == [
+        ("primary-id", "Donato"),
+        ("work@group.calendar.google.com", "Lavoro"),
+        ("it.italian#holiday@group.calendar.google.com", "Festività"),
+    ]
