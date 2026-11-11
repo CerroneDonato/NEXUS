@@ -1,100 +1,63 @@
-:root {
-  --bg: #0f1420;
-  --card: #182033;
-  --text: #e8ecf4;
-  --muted: #8a95ab;
-  --accent: #5fb3ff;
-  --warn: #ff8a65;
-  --ok: #7bd389;
-  font-family: "Segoe UI", system-ui, sans-serif;
-}
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily Hub</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-weather="clear">
+  <div class="sky-glow sky-glow-1"></div>
+  <div class="sky-glow sky-glow-2"></div>
+  <div class="sky-glow sky-glow-3"></div>
 
-* { box-sizing: border-box; }
+  <div id="login" class="login hidden">
+    <form id="login-form">
+      <h1>Daily Hub</h1>
+      <p>Inserisci il token API (HUB_API_TOKEN nel file .env).</p>
+      <input id="login-token" type="password" autocomplete="off" required>
+      <button type="submit">Entra</button>
+    </form>
+  </div>
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: var(--bg);
-  color: var(--text);
-}
+  <main id="app" class="hidden">
+    <header class="top">
+      <div class="top-copy">
+        <div id="clock" class="clock">--:--</div>
+        <div id="date" class="date"></div>
+      </div>
+      <div id="alarm" class="alarm"></div>
+    </header>
 
-.hidden { display: none !important; }
+    <section class="grid">
+      <article class="card weather">
+        <div class="weather-header">
+          <h2>Meteo <span id="weather-city"></span></h2>
+          <div class="weather-badge" id="weather-badge">Oggi</div>
+        </div>
+        <div id="weather-body" class="weather-body"></div>
+        <div id="hourly" class="hourly"></div>
+      </article>
 
-main { padding: 2.5vh 3vw; display: flex; flex-direction: column; min-height: 100vh; }
+      <article class="card events">
+        <h2>Calendario di oggi</h2>
+        <ul id="events" class="list"></ul>
+      </article>
 
-.top { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2.5vh; }
-.clock { font-size: clamp(3rem, 9vh, 7rem); font-weight: 300; line-height: 1; }
-.date { font-size: clamp(1.1rem, 3vh, 2rem); color: var(--muted); text-transform: capitalize; }
-.alarm { font-size: clamp(1rem, 2.4vh, 1.5rem); color: var(--muted); }
+      <article class="card tasks">
+        <h2>Task</h2>
+        <form id="task-form" class="task-form">
+          <input id="task-title" placeholder="Nuovo task..." maxlength="200" required>
+          <input id="task-due" type="date">
+          <button type="submit">Aggiungi</button>
+        </form>
+        <ul id="tasks" class="list"></ul>
+      </article>
+    </section>
 
-.grid {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1.2fr 1.2fr;
-  gap: 2vw;
-}
+    <footer id="status" class="status"></footer>
+  </main>
 
-@media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; }
-}
-
-.card {
-  background: var(--card);
-  border-radius: 18px;
-  padding: 2.5vh 1.6vw;
-  overflow: hidden;
-}
-
-.card h2 { margin: 0 0 2vh; font-size: clamp(1rem, 2.6vh, 1.6rem); font-weight: 500; color: var(--accent); }
-
-.weather-body { display: flex; align-items: center; gap: 1.2vw; }
-.weather-body svg { width: clamp(64px, 12vh, 140px); height: clamp(64px, 12vh, 140px); }
-.temp { font-size: clamp(2.5rem, 8vh, 5.5rem); font-weight: 300; }
-.weather-meta { color: var(--muted); font-size: clamp(0.9rem, 2.2vh, 1.3rem); line-height: 1.5; }
-
-.hourly { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2vh 0.5vw; margin-top: 3vh; }
-.hour { text-align: center; color: var(--muted); font-size: clamp(0.8rem, 1.8vh, 1.05rem); }
-.hour svg { width: 32px; height: 32px; display: block; margin: 0.3rem auto; }
-.hour strong { color: var(--text); display: block; }
-
-.list { list-style: none; margin: 0; padding: 0; }
-.list li {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  padding: 1.2vh 0;
-  border-bottom: 1px solid #243049;
-  font-size: clamp(1rem, 2.4vh, 1.45rem);
-}
-.list li:last-child { border-bottom: none; }
-.list .time { color: var(--accent); min-width: 5.5rem; font-variant-numeric: tabular-nums; }
-.list .sub { color: var(--muted); font-size: 0.8em; }
-.list .grow { flex: 1; }
-.list .empty { color: var(--muted); }
-.list .due { color: var(--muted); font-size: 0.8em; white-space: nowrap; }
-.list .due.overdue { color: var(--warn); }
-.list .due.today { color: var(--ok); }
-
-.list input[type=checkbox] { width: 1.3em; height: 1.3em; accent-color: var(--accent); }
-.list button.delete { background: none; border: none; color: var(--muted); font-size: 1.2em; cursor: pointer; }
-
-.task-form { display: flex; gap: 0.5rem; margin-bottom: 1.5vh; }
-.task-form input, .task-form button, .login input, .login button {
-  font: inherit;
-  padding: 0.55rem 0.8rem;
-  border-radius: 10px;
-  border: 1px solid #2c3a57;
-  background: #0f1420;
-  color: var(--text);
-}
-.task-form input#task-title { flex: 1; min-width: 0; }
-.task-form button, .login button { background: var(--accent); color: #08111f; border: none; cursor: pointer; font-weight: 600; }
-.task-form input::-webkit-calendar-picker-indicator { filter: invert(1); }
-
-.status { margin-top: 1.5vh; color: var(--muted); font-size: 0.85rem; text-align: right; }
-.error { color: var(--warn); }
-
-.login { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-.login form { background: var(--card); padding: 2rem; border-radius: 18px; display: flex; flex-direction: column; gap: 1rem; width: min(420px, 90vw); }
-.login h1 { margin: 0; color: var(--accent); }
-.login p { margin: 0; color: var(--muted); }
+  <script src="/static/app.js"></script>
+</body>
+</html>
