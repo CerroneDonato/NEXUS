@@ -1,217 +1,355 @@
-"use strict";
-
-const TOKEN_KEY = "dailyHubToken";
-const REFRESH_MS = 60 * 1000;
-
-const ICONS = {
-  "clear": '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="12" fill="#ffd166"/><g stroke="#ffd166" stroke-width="4" stroke-linecap="round"><path d="M32 6v8M32 50v8M6 32h8M50 32h8M13.6 13.6l5.7 5.7M44.7 44.7l5.7 5.7M13.6 50.4l5.7-5.7M44.7 19.3l5.7-5.7"/></g></svg>',
-  "partly-cloudy": '<svg viewBox="0 0 64 64"><circle cx="24" cy="24" r="10" fill="#ffd166"/><path d="M20 50h26a10 10 0 0 0 0-20 14 14 0 0 0-26 4 8 8 0 0 0 0 16z" fill="#c9d3e3"/></svg>',
-  "cloudy": '<svg viewBox="0 0 64 64"><path d="M16 48h32a12 12 0 0 0 0-24 16 16 0 0 0-30 4 10 10 0 0 0-2 20z" fill="#c9d3e3"/></svg>',
-  "fog": '<svg viewBox="0 0 64 64"><g stroke="#c9d3e3" stroke-width="5" stroke-linecap="round"><path d="M10 24h44M14 34h36M10 44h44"/></g></svg>',
-  "drizzle": '<svg viewBox="0 0 64 64"><path d="M16 38h32a11 11 0 0 0 0-22 15 15 0 0 0-28 4 9 9 0 0 0-4 18z" fill="#c9d3e3"/><g stroke="#5fb3ff" stroke-width="3" stroke-linecap="round"><path d="M22 46v4M32 46v4M42 46v4"/></g></svg>',
-  "rain": '<svg viewBox="0 0 64 64"><path d="M16 36h32a11 11 0 0 0 0-22 15 15 0 0 0-28 4 9 9 0 0 0-4 18z" fill="#c9d3e3"/><g stroke="#5fb3ff" stroke-width="4" stroke-linecap="round"><path d="M22 42l-3 10M32 42l-3 10M42 42l-3 10"/></g></svg>',
-  "snow": '<svg viewBox="0 0 64 64"><path d="M16 36h32a11 11 0 0 0 0-22 15 15 0 0 0-28 4 9 9 0 0 0-4 18z" fill="#c9d3e3"/><g fill="#ffffff"><circle cx="22" cy="46" r="3"/><circle cx="32" cy="52" r="3"/><circle cx="42" cy="46" r="3"/></g></svg>',
-  "storm": '<svg viewBox="0 0 64 64"><path d="M16 34h32a11 11 0 0 0 0-22 15 15 0 0 0-28 4 9 9 0 0 0-4 18z" fill="#9aa6bb"/><path d="M34 34l-8 14h8l-4 12 12-18h-8l4-8z" fill="#ffd166"/></svg>',
-  "unknown": '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="20" fill="none" stroke="#8a95ab" stroke-width="4"/></svg>',
-};
-
-const timeFmt = new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" });
-const dateFmt = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long" });
-const shortDateFmt = new Intl.DateTimeFormat("it-IT", { weekday: "short", day: "numeric", month: "short" });
-
-const $ = (id) => document.getElementById(id);
-
-function readToken() {
-  const hash = new URLSearchParams(location.hash.slice(1));
-  const fromHash = hash.get("token");
-  if (fromHash) {
-    localStorage.setItem(TOKEN_KEY, fromHash);
-    history.replaceState(null, "", location.pathname);
-  }
-  return localStorage.getItem(TOKEN_KEY);
+:root {
+  --bg: #0f1420;
+  --bg-2: #1b2440;
+  --panel: rgba(17, 24, 37, 0.62);
+  --panel-strong: rgba(14, 18, 28, 0.8);
+  --text: #edf3ff;
+  --muted: #bfd0ea;
+  --accent: #7cc7ff;
+  --accent-2: #8ee4ff;
+  --warn: #ff8a65;
+  --ok: #7bd389;
+  --shadow: rgba(5, 10, 20, 0.42);
+  --glass: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.12);
+  font-family: "Segoe UI", system-ui, sans-serif;
 }
 
-async function api(path, options = {}) {
-  const response = await fetch(path, {
-    ...options,
-    headers: {
-      "Authorization": `Bearer ${localStorage.getItem(TOKEN_KEY)}`,
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-  if (response.status === 401) {
-    localStorage.removeItem(TOKEN_KEY);
-    showLogin();
-    throw new Error("Token non valido");
-  }
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.status === 204 ? null : response.json();
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
 }
 
-function el(tag, attrs = {}, ...children) {
-  const node = document.createElement(tag);
-  for (const [key, value] of Object.entries(attrs)) {
-    if (key === "class") node.className = value;
-    else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
-    else node.setAttribute(key, value);
-  }
-  for (const child of children) {
-    if (child !== null && child !== undefined) node.append(child);
-  }
-  return node;
+body {
+  position: relative;
+  background: linear-gradient(135deg, var(--bg), var(--bg-2));
+  color: var(--text);
+  transition: background 0.7s ease, filter 0.7s ease;
 }
 
-function iconNode(key) {
-  const wrapper = document.createElement("span");
-  wrapper.innerHTML = ICONS[key] || ICONS.unknown;
-  return wrapper.firstChild;
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.15), transparent 26%),
+    radial-gradient(circle at 75% 15%, rgba(255,255,255,0.08), transparent 24%);
+  opacity: 0.85;
+  pointer-events: none;
 }
 
-function round(value) {
-  return value === null || value === undefined ? "--" : Math.round(value);
+body[data-weather="clear"] { background: linear-gradient(135deg, #0f1f34 0%, #6baed6 30%, #f1d18f 100%); }
+body[data-weather="partly-cloudy"] { background: linear-gradient(135deg, #13263d 0%, #5c7da8 30%, #b9d0e6 100%); }
+body[data-weather="cloudy"] { background: linear-gradient(135deg, #1a2635 0%, #586c7e 35%, #a3b0bc 100%); }
+body[data-weather="rain"] { background: linear-gradient(135deg, #102033 0%, #2d4d6a 30%, #5a778d 100%); }
+body[data-weather="drizzle"] { background: linear-gradient(135deg, #132437 0%, #42657d 30%, #7897a8 100%); }
+body[data-weather="snow"] { background: linear-gradient(135deg, #101b2b 0%, #5c7a9f 30%, #dfeaf6 100%); }
+body[data-weather="storm"] { background: linear-gradient(135deg, #0f1725 0%, #1a2d45 30%, #4d5d78 100%); }
+body[data-weather="fog"] { background: linear-gradient(135deg, #394851 0%, #7f8d8f 40%, #bdbfbd 100%); }
+
+.sky-glow {
+  position: absolute;
+  inset: auto;
+  pointer-events: none;
+  filter: blur(18px);
+  opacity: 0.65;
+  animation: drift 18s ease-in-out infinite alternate;
 }
 
-function renderClock() {
-  const now = new Date();
-  $("clock").textContent = timeFmt.format(now);
-  $("date").textContent = dateFmt.format(now);
+.sky-glow-1 {
+  width: 36vw;
+  height: 36vw;
+  top: 6vh;
+  right: 8vw;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
 }
 
-function renderWeather(weather, error) {
-  const body = $("weather-body");
-  const hourly = $("hourly");
-  body.replaceChildren();
-  hourly.replaceChildren();
-  if (!weather) {
-    body.append(el("p", { class: "error" }, error || "Meteo non disponibile"));
-    return;
-  }
-  $("weather-city").textContent = weather.city;
-  const { current, today } = weather;
-  body.append(
-    iconNode(current.icon),
-    el("div", {},
-      el("div", { class: "temp" }, `${round(current.temperature)}°`),
-      el("div", { class: "weather-meta" },
-        el("div", {}, current.description),
-        el("div", {}, `Min ${round(today.min)}° / Max ${round(today.max)}°`),
-        el("div", {}, `Pioggia ${round(today.precipitationProbability)}% · Percepita ${round(current.apparentTemperature)}°`),
-      ),
-    ),
-  );
-  for (const hour of weather.hourly || []) {
-    hourly.append(el("div", { class: "hour" },
-      hour.time.slice(11, 16),
-      iconNode(hour.icon),
-      el("strong", {}, `${round(hour.temperature)}°`),
-      `${round(hour.precipitationProbability)}%`,
-    ));
-  }
+.sky-glow-2 {
+  width: 24vw;
+  height: 24vw;
+  bottom: 10vh;
+  left: 8vw;
+  border-radius: 50%;
+  background: rgba(132, 184, 255, 0.14);
 }
 
-function renderEvents(events, error) {
-  const list = $("events");
-  list.replaceChildren();
-  if (error) list.append(el("li", { class: "error" }, error));
-  if (!events.length && !error) list.append(el("li", { class: "empty" }, "Nessun evento oggi"));
-  for (const event of events) {
-    const time = event.allDay
-      ? "Tutto il giorno"
-      : `${timeFmt.format(new Date(event.start))}–${timeFmt.format(new Date(event.end))}`;
-    list.append(el("li", {},
-      el("span", { class: "time" }, time),
-      el("span", { class: "grow" }, event.title, event.location ? el("div", { class: "sub" }, event.location) : null),
-    ));
-  }
+.sky-glow-3 {
+  width: 18vw;
+  height: 18vw;
+  left: 44vw;
+  top: 16vh;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
 }
 
-function dueLabel(task, todayIso) {
-  if (!task.due) return null;
-  let cls = "due";
-  let text = shortDateFmt.format(new Date(`${task.due}T12:00:00`));
-  if (task.overdue) { cls += " overdue"; text = `Scaduto · ${text}`; }
-  else if (task.due === todayIso) { cls += " today"; text = "Oggi"; }
-  return el("span", { class: cls }, text);
+@keyframes drift {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(30px, 14px, 0); }
 }
 
-function renderTasks(tasks, todayIso) {
-  const list = $("tasks");
-  list.replaceChildren();
-  if (!tasks.length) list.append(el("li", { class: "empty" }, "Nessun task aperto"));
-  for (const task of tasks) {
-    list.append(el("li", {},
-      el("input", { type: "checkbox", title: "Completa", onchange: () => updateTask(task.id, { done: true }) }),
-      el("span", { class: "grow" }, task.title),
-      dueLabel(task, todayIso),
-      el("button", { class: "delete", title: "Elimina", onclick: () => deleteTask(task.id) }, "\u00d7"),
-    ));
-  }
+.hidden { display: none !important; }
+
+main {
+  position: relative;
+  z-index: 1;
+  padding: 2.5vh 3vw;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
-function renderAlarm(alarm) {
-  const node = $("alarm");
-  if (!alarm || !alarm.nextAlarm) { node.textContent = "Nessuna sveglia sincronizzata"; return; }
-  const when = new Date(alarm.nextAlarm);
-  node.textContent = `Prossima sveglia: ${shortDateFmt.format(when)} ${timeFmt.format(when)}`;
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2.2vh;
 }
 
-async function refresh() {
-  try {
-    const data = await api("/api/today");
-    renderWeather(data.weather, data.weatherError);
-    renderEvents(data.events, data.calendarError);
-    renderTasks(data.tasks, data.date);
-    renderAlarm(data.alarm);
-    $("status").textContent = `Aggiornato alle ${timeFmt.format(new Date())}`;
-    $("status").classList.remove("error");
-  } catch (err) {
-    $("status").textContent = `Errore di aggiornamento: ${err.message}`;
-    $("status").classList.add("error");
-  }
+.top-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-async function updateTask(id, patch) {
-  await api(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
-  refresh();
+.clock {
+  font-size: clamp(3rem, 8.4vh, 7rem);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  text-shadow: 0 8px 18px rgba(0,0,0,0.18);
 }
 
-async function deleteTask(id) {
-  await api(`/api/tasks/${id}`, { method: "DELETE" });
-  refresh();
+.date {
+  font-size: clamp(1rem, 2.3vh, 1.8rem);
+  color: rgba(255,255,255,0.82);
+  text-transform: capitalize;
 }
 
-function showLogin() {
-  $("app").classList.add("hidden");
-  $("login").classList.remove("hidden");
+.alarm {
+  font-size: clamp(1rem, 2.2vh, 1.55rem);
+  color: rgba(255,255,255,0.78);
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.09);
 }
 
-function showApp() {
-  $("login").classList.add("hidden");
-  $("app").classList.remove("hidden");
-  refresh();
+.grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1.2fr;
+  gap: 1.5vw;
 }
 
-$("login-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  localStorage.setItem(TOKEN_KEY, $("login-token").value.trim());
-  showApp();
-});
+.card {
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  padding: 2.2vh 1.5vw;
+  overflow: hidden;
+  box-shadow: 0 18px 42px var(--shadow);
+}
 
-$("task-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const title = $("task-title").value.trim();
-  if (!title) return;
-  const due = $("task-due").value || null;
-  await api("/api/tasks", { method: "POST", body: JSON.stringify({ title, due }) });
-  $("task-title").value = "";
-  $("task-due").value = "";
-  refresh();
-});
+.card h2 {
+  margin: 0 0 1.7vh;
+  font-size: clamp(1rem, 2.3vh, 1.5rem);
+  font-weight: 600;
+  color: rgba(255,255,255,0.88);
+}
 
-renderClock();
-setInterval(renderClock, 1000);
-setInterval(() => { if (!$("app").classList.contains("hidden")) refresh(); }, REFRESH_MS);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+.weather-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
 
-if (readToken()) showApp(); else showLogin();
+.weather-badge {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.9);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.76rem;
+}
+
+.weather-body {
+  display: flex;
+  align-items: center;
+  gap: 1.2vw;
+  min-height: 10vh;
+}
+
+.weather-body svg {
+  width: clamp(64px, 11vh, 140px);
+  height: clamp(64px, 11vh, 140px);
+  filter: drop-shadow(0 16px 26px rgba(0,0,0,0.18));
+}
+
+.temp {
+  font-size: clamp(2.7rem, 7.3vh, 5.2rem);
+  font-weight: 300;
+  line-height: 1.1;
+}
+
+.weather-meta {
+  color: rgba(255,255,255,0.8);
+  font-size: clamp(0.9rem, 2vw, 1.3rem);
+  line-height: 1.45;
+}
+
+.hourly {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.8rem 0.5rem;
+  margin-top: 2vh;
+}
+
+.hour {
+  text-align: center;
+  color: rgba(255,255,255,0.7);
+  font-size: clamp(0.72rem, 1.7vh, 0.95rem);
+}
+
+.hour svg {
+  width: 32px;
+  height: 32px;
+  display: block;
+  margin: 0.35rem auto;
+}
+
+.hour strong {
+  color: var(--text);
+  display: block;
+  font-size: 1.02em;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list li {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1.05vh 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: clamp(1rem, 2.4vh, 1.3rem);
+}
+
+.list li:last-child { border-bottom: none; }
+
+.list .time {
+  color: var(--accent-2);
+  min-width: 5.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.list .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.list .empty { color: rgba(255,255,255,0.7); }
+
+.list .due {
+  color: rgba(255,255,255,0.8);
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+.list .due.overdue { color: var(--warn); }
+.list .due.today { color: var(--ok); }
+
+.list input[type=checkbox] {
+  width: 1.3em;
+  height: 1.3em;
+  accent-color: var(--accent);
+}
+
+.list button.delete {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.75);
+  font-size: 1.2em;
+  cursor: pointer;
+}
+
+.task-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5vh;
+}
+
+.task-form input, .task-form button, .login input, .login button {
+  font: inherit;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(7, 11, 18, 0.3);
+  color: var(--text);
+}
+
+.task-form input#task-title { flex: 1; min-width: 0; }
+.task-form button, .login button {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #06131d;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.task-form input::-webkit-calendar-picker-indicator { filter: invert(1); }
+
+.status {
+  margin-top: 1.5vh;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.error { color: var(--warn); }
+
+.login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.login form {
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  padding: 2rem;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: min(420px, 90vw);
+}
+
+.login h1 {
+  margin: 0;
+  color: rgba(255,255,255,0.95);
+}
+
+.login p {
+  margin: 0;
+  color: rgba(255,255,255,0.7);
+}
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  main { padding: 1.5rem 1rem; }
+}
