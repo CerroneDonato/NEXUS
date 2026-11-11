@@ -97,3 +97,27 @@ To-do's from the plan have already been created. Do not create them again. Mark 
 **Context**: Construction - redesign and bugfix
 
 ---
+
+## New initiative: Jarvis-style assistant
+**Timestamp**: 2026-11-11T13:22:00Z
+**User Input**: "Adesso ho una buona base. Guarda lo stato attuale su git. Capiamo come fare dei miglioramenti passo passo. L'idea e quello di far diventare questo sistema integrato una sorta di assistente personale alla Jarvis di Tony Stark. Come procediamo?"
+**AI Response**: "Fast-forwarded local main to origin/main 5893149 (multi-calendar support, select_account login); 20 tests pass. Proposed a stepwise roadmap (spoken briefing, chat/LLM with tools, voice on hub, proactive notifications) and asked clarifying questions on hardware, AI engine, interface and first step."
+**Context**: Inception - requirements analysis
+
+---
+
+## Requirements answers and approval (Stage 2 brain)
+**Timestamp**: 2026-11-11T13:40:00Z
+**User Input**: "hub_hw: weak; brain: Ho 8gb di ram e 85 gb di pazio, forse meglio cloud ma dimmi tu; channel: dashboard_chat, android_app, C e D; first_step: brain" then "approve: yes; name: C, Lilith"
+**AI Response**: "Recommended Google Gemini Flash free tier (cloud). Wrote aidlc-docs/inception/requirements/jarvis-brain-requirements.md. Approved; assistant name is Lilith. Proceeding to code generation."
+**Context**: Inception - requirements approval
+
+---
+
+## Code generation complete (Stage 2 brain)
+**Timestamp**: 2026-11-11T14:05:00Z
+**User Input**: "(none - implementation of approved requirements)"
+**AI Response**: "Implemented Gemini function-calling assistant (assistant.py, assistant_tools.py), endpoints /api/assistant, /api/assistant/chat, DELETE reset; 7-day daily forecast; dashboard Lilith orb + chat panel; Android ChatScreen + HubClient chat; docs/assistant-setup.md. Evidence: pytest 31 passed (11 new); browser smoke with scripted model: list_events and create_task executed through real tools, action chip shown, tasks panel refreshed. Not verified here: real Gemini call (AC-7) and Android build (no SDK)."
+**Context**: Construction - code generation
+
+---

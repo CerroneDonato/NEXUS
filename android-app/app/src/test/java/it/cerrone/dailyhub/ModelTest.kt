@@ -72,6 +72,22 @@ class ModelTest {
     }
 
     @Test
+    fun parseChatResult_readsReplyAndActions() {
+        val result = parseChatResult("""{"reply":"Fatto.","actions":["Task creato: Latte"]}""")
+
+        assertEquals("Fatto.", result.reply)
+        assertEquals(listOf("Task creato: Latte"), result.actions)
+        assertEquals(AssistantInfo("Lilith", false), parseAssistantInfo("""{"name":"Lilith","enabled":false}"""))
+    }
+
+    @Test
+    fun errorDetail_onlyReturnsStringDetails() {
+        assertEquals("Assistente non configurato", errorDetail("""{"detail":"Assistente non configurato"}"""))
+        assertNull(errorDetail("""{"detail":[{"msg":"too long"}]}"""))
+        assertNull(errorDetail("<html>"))
+    }
+
+    @Test
     fun toIso_includesSecondsAndOffset() {
         val iso = AlarmSync.toIso(1_794_376_800_000L, ZoneId.of("Europe/Rome"))
 

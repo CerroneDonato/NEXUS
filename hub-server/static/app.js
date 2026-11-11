@@ -52,6 +52,8 @@ const UI_ICONS = {
   sunset: '<path d="M12 8V3M8 4l4 4 4-4M4 18h16M6.3 13.3l1.4 1.4M17.7 13.3l-1.4 1.4M8 18a4 4 0 0 1 8 0"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  send: '<path d="M4 12l16-8-6 16-2.5-6.5L4 12z"/>',
+  restart: '<path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v4.5h4.5"/>',
 };
 
 function uiIcon(name, strokeWidth = 1.8) {
@@ -123,7 +125,12 @@ async function api(path, options = {}) {
     showLogin();
     throw new Error("Token non valido");
   }
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const error = new Error(typeof body?.detail === "string" ? body.detail : `HTTP ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
   return response.status === 204 ? null : response.json();
 }
 
@@ -725,6 +732,7 @@ function showApp() {
   $("login").classList.add("hidden");
   $("app").classList.remove("hidden");
   refresh();
+  Assistant.init();
 }
 
 $("login-form").addEventListener("submit", (event) => {
@@ -743,6 +751,144 @@ $("task-form").addEventListener("submit", async (event) => {
   $("task-due").value = "";
   refresh();
 });
+
+/* ------------------------------------------------------------------ assistant */
+
+const Assistant = (() => {
+  const SUGGESTIONS = ["Cosa ho in programma oggi?", "Mi serve l'ombrello?", "Che task ho in scadenza?", "Com'è il meteo domani?"];
+  const panel = $("assistant");
+  const log = $("assistant-log");
+  const input = $("assistant-input");
+  let conversationId = newId();
+  let name = "Lilith";
+  let enabled = null;
+  let busy = false;
+
+  function newId() {
+    return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function scrollDown() {
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function bubble(role, text, extra = {}) {
+    const node = el("div", { class: `msg ${role}${extra.error ? " error" : ""}` }, el("div", { class: "msg-text" }, text));
+    if (extra.actions && extra.actions.length) {
+      node.append(el("div", { class: "msg-actions" },
+        ...extra.actions.map((a) => el("span", { class: "msg-action", html: uiIcon("check", 2.4) }, a))));
+    }
+    log.append(node);
+    scrollDown();
+    return node;
+  }
+
+  function renderSuggestions() {
+    const host = $("assistant-suggestions");
+    host.replaceChildren();
+    if (log.children.length || !enabled) return;
+    for (const text of SUGGESTIONS) {
+      host.append(el("button", { type: "button", class: "suggestion", onclick: () => send(text) }, text));
+    }
+  }
+
+  function greet() {
+    log.replaceChildren();
+    if (enabled === false) {
+      bubble("bot", "Non sono ancora configurata. Sul PC hub aggiungi GEMINI_API_KEY nel file hub-server\\.env (chiave gratuita da aistudio.google.com) e riavvia il server.", { error: true });
+    }
+    renderSuggestions();
+  }
+
+  async function init() {
+    try {
+      const info = await api("/api/assistant");
+      name = info.name;
+      enabled = info.enabled;
+    } catch {
+      enabled = null;
+    }
+    $("assistant-name").textContent = name;
+    $("assistant-orb-label").textContent = name;
+    input.placeholder = `Chiedi a ${name}...`;
+    if (!log.children.length || enabled === false) greet();
+  }
+
+  function open() {
+    panel.inert = false;
+    panel.classList.add("open");
+    panel.setAttribute("aria-hidden", "false");
+    $("assistant-orb").classList.add("hidden");
+    setTimeout(() => input.focus(), 150);
+  }
+
+  function close() {
+    panel.inert = true;
+    panel.classList.remove("open");
+    panel.setAttribute("aria-hidden", "true");
+    $("assistant-orb").classList.remove("hidden");
+  }
+
+  async function send(text) {
+    const message = text.trim();
+    if (!message || busy) return;
+    busy = true;
+    input.value = "";
+    autosize();
+    $("assistant-suggestions").replaceChildren();
+    bubble("user", message);
+    const thinking = el("div", { class: "msg bot thinking" }, el("span"), el("span"), el("span"));
+    log.append(thinking);
+    scrollDown();
+    panel.classList.add("busy");
+    try {
+      const result = await api("/api/assistant/chat", { method: "POST", body: JSON.stringify({ conversationId, message }) });
+      thinking.remove();
+      bubble("bot", result.reply, { actions: result.actions });
+      if (result.actions.length) refresh();
+    } catch (err) {
+      thinking.remove();
+      bubble("bot", err.message || "Qualcosa è andato storto.", { error: true });
+    } finally {
+      busy = false;
+      panel.classList.remove("busy");
+      input.focus();
+    }
+  }
+
+  async function reset() {
+    const old = conversationId;
+    conversationId = newId();
+    greet();
+    if (enabled) api(`/api/assistant/chat/${old}`, { method: "DELETE" }).catch(() => {});
+    input.focus();
+  }
+
+  function autosize() {
+    input.style.height = "auto";
+    input.style.height = `${Math.min(input.scrollHeight, 160)}px`;
+  }
+
+  panel.inert = true;
+  $("assistant-orb").addEventListener("click", open);
+  $("assistant-close").addEventListener("click", close);
+  $("assistant-new").addEventListener("click", reset);
+  $("assistant-close").innerHTML = uiIcon("close", 2);
+  $("assistant-new").innerHTML = uiIcon("restart", 2);
+  panel.querySelector(".send").innerHTML = uiIcon("send", 2);
+  $("assistant-form").addEventListener("submit", (event) => { event.preventDefault(); send(input.value); });
+  input.addEventListener("input", autosize);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(input.value); }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && panel.classList.contains("open")) close();
+    const typing = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName);
+    if (event.key === "/" && !typing && !$("app").classList.contains("hidden")) { event.preventDefault(); open(); }
+  });
+
+  return { init, open, close, send };
+})();
 
 /* ------------------------------------------------------------------ timers */
 

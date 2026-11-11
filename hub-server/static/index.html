@@ -83,6 +83,29 @@
         <ul id="tasks" class="task-list"></ul>
       </section>
     </div>
+
+    <button id="assistant-orb" class="assistant-orb" type="button" title="Parla con l'assistente (tasto /)">
+      <span class="orb"></span><span id="assistant-orb-label">Lilith</span>
+    </button>
+
+    <aside id="assistant" class="assistant glass" aria-hidden="true" aria-label="Assistente">
+      <header class="assistant-head">
+        <div class="assistant-id">
+          <span class="orb"></span>
+          <div><strong id="assistant-name">Lilith</strong><small id="assistant-sub">Assistente personale</small></div>
+        </div>
+        <div class="assistant-tools">
+          <button id="assistant-new" class="icon-btn" type="button" title="Nuova conversazione"></button>
+          <button id="assistant-close" class="icon-btn" type="button" title="Chiudi (Esc)"></button>
+        </div>
+      </header>
+      <div id="assistant-log" class="assistant-log" aria-live="polite"></div>
+      <div id="assistant-suggestions" class="assistant-suggestions"></div>
+      <form id="assistant-form" class="assistant-form">
+        <textarea id="assistant-input" rows="1" maxlength="2000" placeholder="Chiedi qualcosa..." autocomplete="off"></textarea>
+        <button type="submit" class="btn-primary send" title="Invia"></button>
+      </form>
+    </aside>
   </main>
 
   <script src="/static/app.js"></script>

@@ -49,6 +49,7 @@ Sul PC Hub: `git clone https://github.com/<utente>/daily-hub.git` (per l'autenti
 3. [Rete: Tailscale o LAN](docs/network-setup.md)
 4. [App Android e widget](docs/android-setup.md)
 5. [Verifica end-to-end](docs/e2e-check.md)
+6. [Assistente Lilith (Gemini gratuito)](docs/assistant-setup.md)
 
 ## Sviluppo locale
 
@@ -73,3 +74,6 @@ Tutte le rotte `/api/*` (tranne `/api/health`) richiedono `Authorization: Bearer
 | PATCH | `/api/tasks/{id}` | `{"done": true}` / `{"title": ...}` / `{"due": null}` |
 | DELETE | `/api/tasks/{id}` | elimina |
 | GET/PUT | `/api/alarm` | `{"nextAlarm": "2026-11-11T07:00:00+01:00"}` oppure `null` |
+| GET | `/api/assistant` | `{"name": "Lilith", "enabled": true}` |
+| POST | `/api/assistant/chat` | `{"conversationId": "...", "message": "..."}` -> `{"reply": "...", "actions": [...]}` |
+| DELETE | `/api/assistant/chat/{conversationId}` | azzera la conversazione |

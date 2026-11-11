@@ -52,7 +52,7 @@ class OpenMeteoClient:
             "latitude": latitude,
             "longitude": longitude,
             "timezone": timezone,
-            "forecast_days": 2,
+            "forecast_days": 7,
             "current": "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day",
             "hourly": "temperature_2m,precipitation_probability,weather_code",
             "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset",
@@ -64,6 +64,27 @@ class OpenMeteoClient:
         response = self._http.get(OPEN_METEO_URL, params=self._params)
         response.raise_for_status()
         return parse_forecast(response.json(), self._city)
+
+
+def _daily(daily: dict[str, Any]) -> list[dict[str, Any]]:
+    def at(key: str, index: int) -> Any:
+        values = daily.get(key) or []
+        return values[index] if index < len(values) else None
+
+    days = []
+    for index, day in enumerate(daily.get("time", [])):
+        desc, icon = describe(at("weather_code", index))
+        days.append(
+            {
+                "date": day,
+                "min": at("temperature_2m_min", index),
+                "max": at("temperature_2m_max", index),
+                "precipitationProbability": at("precipitation_probability_max", index),
+                "description": desc,
+                "icon": icon,
+            }
+        )
+    return days
 
 
 def parse_forecast(payload: dict[str, Any], city: str) -> dict[str, Any]:
@@ -114,5 +135,6 @@ def parse_forecast(payload: dict[str, Any], city: str) -> dict[str, Any]:
             "icon": daily_icon,
         },
         "hourly": hours[:12],
+        "daily": _daily(daily),
         "fetchedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
     }

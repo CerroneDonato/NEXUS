@@ -18,12 +18,13 @@ PAYLOAD = {
         "weather_code": [2, 3, 61],
     },
     "daily": {
-        "weather_code": [61],
-        "temperature_2m_max": [14.2],
-        "temperature_2m_min": [6.1],
-        "precipitation_probability_max": [70],
-        "sunrise": ["2026-11-10T07:12"],
-        "sunset": ["2026-11-10T16:52"],
+        "time": ["2026-11-10", "2026-11-11"],
+        "weather_code": [61, 0],
+        "temperature_2m_max": [14.2, 16.0],
+        "temperature_2m_min": [6.1, 5.0],
+        "precipitation_probability_max": [70, 5],
+        "sunrise": ["2026-11-10T07:12", "2026-11-11T07:13"],
+        "sunset": ["2026-11-10T16:52", "2026-11-11T16:51"],
     },
 }
 
@@ -43,6 +44,20 @@ def test_parse_forecast_maps_current_and_daily():
         "sunset": "2026-11-10T16:52",
         "description": "Pioggia leggera",
         "icon": "rain",
+    }
+
+
+def test_parse_forecast_lists_each_forecast_day():
+    days = parse_forecast(PAYLOAD, "Milano")["daily"]
+
+    assert [d["date"] for d in days] == ["2026-11-10", "2026-11-11"]
+    assert days[1] == {
+        "date": "2026-11-11",
+        "min": 5.0,
+        "max": 16.0,
+        "precipitationProbability": 5,
+        "description": "Sereno",
+        "icon": "clear",
     }
 
 

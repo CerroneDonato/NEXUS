@@ -12,6 +12,7 @@ import uvicorn
 # Use the Windows certificate store so HTTPS works behind proxies with custom root CAs.
 truststore.inject_into_ssl()
 
+from app.assistant import GeminiClient
 from app.calendar_client import GoogleCalendarClient
 from app.config import load_settings
 from app.db import Database
@@ -38,6 +39,7 @@ def build_app():
         calendar=GoogleCalendarClient(settings.google_token_file, settings.calendar_ids, settings.tz),
         wake=create_wake_scheduler(settings.wake_enabled),
         now=lambda: datetime.now(settings.tz),
+        assistant_model=GeminiClient(settings.gemini_api_key, settings.gemini_model) if settings.gemini_api_key else None,
     )
     return create_app(services), settings
 

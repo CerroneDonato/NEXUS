@@ -35,6 +35,9 @@ class Settings:
     calendar_ids: tuple[str, ...] = field(default_factory=lambda: ("primary",))
     wake_lead_minutes: int = 2
     wake_enabled: bool = True
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
+    assistant_name: str = "Lilith"
 
     @property
     def tz(self) -> ZoneInfo:
@@ -66,4 +69,7 @@ def load_settings() -> Settings:
         ),
         wake_lead_minutes=int(os.environ.get("WAKE_LEAD_MINUTES", "2")),
         wake_enabled=_as_bool(os.environ.get("WAKE_ENABLED", "true")),
+        gemini_api_key=os.environ.get("GEMINI_API_KEY", "").strip(),
+        gemini_model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip(),
+        assistant_name=os.environ.get("ASSISTANT_NAME", "Lilith").strip() or "Lilith",
     )

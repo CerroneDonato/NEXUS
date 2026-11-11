@@ -93,6 +93,28 @@ fun parseTask(obj: JSONObject) = TaskInfo(
 
 fun parseTasks(json: String): List<TaskInfo> = JSONArray(json).mapObjects(::parseTask)
 
+data class AssistantInfo(val name: String, val enabled: Boolean)
+
+data class ChatResult(val reply: String, val actions: List<String>)
+
+fun parseAssistantInfo(json: String): AssistantInfo {
+    val root = JSONObject(json)
+    return AssistantInfo(root.optString("name", "Lilith"), root.optBoolean("enabled"))
+}
+
+fun parseChatResult(json: String): ChatResult {
+    val root = JSONObject(json)
+    val actions = root.optJSONArray("actions")
+    return ChatResult(
+        reply = root.optString("reply"),
+        actions = if (actions == null) emptyList() else (0 until actions.length()).map { actions.getString(it) },
+    )
+}
+
+/** FastAPI error bodies look like {"detail": "..."}; validation errors use a list instead of a string. */
+fun errorDetail(body: String): String? =
+    runCatching { JSONObject(body).opt("detail") as? String }.getOrNull()?.takeIf { it.isNotBlank() }
+
 fun parseToday(json: String): TodaySnapshot {
     val root = JSONObject(json)
     val weather = root.optJSONObject("weather")?.let { w ->

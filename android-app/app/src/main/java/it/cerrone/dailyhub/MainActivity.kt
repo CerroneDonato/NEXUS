@@ -47,16 +47,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         RefreshWorker.schedulePeriodic(this)
+        val prefs = Prefs(this)
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
-                HubScreen(Prefs(this))
+                var chatOpen by remember { mutableStateOf(false) }
+                if (chatOpen) {
+                    ChatScreen(prefs, onBack = { chatOpen = false })
+                } else {
+                    HubScreen(prefs, onOpenChat = { chatOpen = true })
+                }
             }
         }
     }
 }
 
 @Composable
-private fun HubScreen(prefs: Prefs) {
+private fun HubScreen(prefs: Prefs, onOpenChat: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var url by remember { mutableStateOf(prefs.hubUrl.ifBlank { "http://" }) }
@@ -97,7 +103,8 @@ private fun HubScreen(prefs: Prefs) {
         ) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Daily Hub", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                    Text("NEXUS", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                    if (prefs.isConfigured) Button(onClick = onOpenChat) { Text("Lilith") }
                     TextButton(onClick = { showSettings = !showSettings }) { Text("Impostazioni") }
                 }
             }

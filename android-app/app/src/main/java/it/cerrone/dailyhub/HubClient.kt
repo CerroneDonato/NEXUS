@@ -39,18 +39,29 @@ class HubClient(baseUrl: String, private val token: String) {
         call("PUT", "/api/alarm", JSONObject().put("nextAlarm", isoAlarm ?: JSONObject.NULL))
     }
 
-    private suspend fun call(method: String, path: String, body: JSONObject? = null): String =
+    suspend fun assistantInfo(): AssistantInfo = parseAssistantInfo(call("GET", "/api/assistant"))
+
+    suspend fun chat(conversationId: String, message: String): ChatResult {
+        val body = JSONObject().put("conversationId", conversationId).put("message", message)
+        return parseChatResult(call("POST", "/api/assistant/chat", body, chatHttp))
+    }
+
+    suspend fun resetChat(conversationId: String) {
+        call("DELETE", "/api/assistant/chat/$conversationId")
+    }
+
+    private suspend fun call(method: String, path: String, body: JSONObject? = null, client: OkHttpClient = http): String =
         withContext(Dispatchers.IO) {
             val request = Request.Builder()
                 .url(base + path)
                 .header("Authorization", "Bearer $token")
                 .method(method, body?.toString()?.toRequestBody(json))
                 .build()
-            http.newCall(request).execute().use { response ->
+            client.newCall(request).execute().use { response ->
                 val text = response.body?.string().orEmpty()
                 when {
                     response.code == 401 -> throw HubException("Token non valido")
-                    !response.isSuccessful -> throw HubException("Errore HTTP ${response.code}")
+                    !response.isSuccessful -> throw HubException(errorDetail(text) ?: "Errore HTTP ${response.code}")
                     else -> text
                 }
             }
@@ -60,6 +71,11 @@ class HubClient(baseUrl: String, private val token: String) {
         private val http = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
+            .build()
+
+        // Assistant replies may chain several model and tool calls.
+        private val chatHttp = http.newBuilder()
+            .readTimeout(90, TimeUnit.SECONDS)
             .build()
     }
 }

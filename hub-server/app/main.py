@@ -11,8 +11,10 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from .assistant import Assistant, AssistantError, ModelClient
+from .assistant_tools import Toolbox
 from .cache import TtlCache
 from .calendar_client import CalendarNotConfigured
 from .config import Settings
@@ -45,6 +47,21 @@ class AlarmState(BaseModel):
     scheduled: bool
 
 
+class ChatRequest(BaseModel):
+    conversationId: str = Field(min_length=1, max_length=64)
+    message: str = Field(min_length=1, max_length=2000)
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    actions: list[str]
+
+
+class AssistantInfo(BaseModel):
+    name: str
+    enabled: bool
+
+
 @dataclass
 class HubServices:
     settings: Settings
@@ -53,6 +70,7 @@ class HubServices:
     calendar: CalendarProvider
     wake: WakeScheduler
     now: Callable[[], datetime]
+    assistant_model: ModelClient | None = None
 
 
 def create_app(services: HubServices) -> FastAPI:
@@ -61,11 +79,12 @@ def create_app(services: HubServices) -> FastAPI:
     weather_cache = TtlCache(services.weather.fetch, ttl_seconds=30 * 60)
     calendar_cache: dict[date, TtlCache] = {}
 
-    def events_today(today: date) -> list[dict[str, Any]]:
-        if today not in calendar_cache:
-            calendar_cache.clear()
-            calendar_cache[today] = TtlCache(lambda: services.calendar.events_for(today), ttl_seconds=5 * 60)
-        return calendar_cache[today].get()
+    def events_on(day: date) -> list[dict[str, Any]]:
+        if day not in calendar_cache:
+            if len(calendar_cache) >= 16:
+                calendar_cache.clear()
+            calendar_cache[day] = TtlCache(lambda: services.calendar.events_for(day), ttl_seconds=5 * 60)
+        return calendar_cache[day].get()
 
     def require_token(request: Request) -> None:
         header = request.headers.get("Authorization", "")
@@ -107,7 +126,7 @@ def create_app(services: HubServices) -> FastAPI:
             log.warning("Weather fetch failed: %s", exc)
             result["weatherError"] = "Meteo non disponibile"
         try:
-            result["events"] = events_today(now.date())
+            result["events"] = events_on(now.date())
         except CalendarNotConfigured as exc:
             result["calendarError"] = str(exc)
         except Exception as exc:
@@ -163,6 +182,48 @@ def create_app(services: HubServices) -> FastAPI:
             scheduled = False
         services.db.set_value(WAKE_KEY, wake_at.isoformat() if scheduled and wake_at else None)
         return _alarm_state()
+
+    assistant: Assistant | None = None
+    if services.assistant_model is not None:
+        toolbox = Toolbox(
+            tasks=tasks,
+            weather=weather_cache.get,
+            events_on=events_on,
+            alarm=lambda: {"nextAlarm": _alarm_state().model_dump(mode="json")["nextAlarm"]},
+        )
+        assistant = Assistant(
+            services.assistant_model,
+            toolbox,
+            name=settings.assistant_name,
+            city=settings.city,
+            timezone=settings.timezone,
+            now=services.now,
+        )
+
+    def require_assistant() -> Assistant:
+        if assistant is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Assistente non configurato: imposta GEMINI_API_KEY nel file .env dell'hub",
+            )
+        return assistant
+
+    @app.get("/api/assistant", dependencies=auth, response_model=AssistantInfo)
+    def assistant_info() -> AssistantInfo:
+        return AssistantInfo(name=settings.assistant_name, enabled=assistant is not None)
+
+    @app.post("/api/assistant/chat", dependencies=auth, response_model=ChatResponse)
+    def assistant_chat(data: ChatRequest) -> ChatResponse:
+        bot = require_assistant()
+        try:
+            result = bot.chat(data.conversationId, data.message.strip())
+        except AssistantError as exc:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+        return ChatResponse(reply=result.reply, actions=result.actions)
+
+    @app.delete("/api/assistant/chat/{conversation_id}", dependencies=auth, status_code=status.HTTP_204_NO_CONTENT)
+    def assistant_reset(conversation_id: str) -> None:
+        require_assistant().reset(conversation_id)
 
     if STATIC_DIR.exists():
         app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
