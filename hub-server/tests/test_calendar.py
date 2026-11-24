@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from app.calendar_client import normalize_event, sort_events, visible_calendars
+import pytest
+from google.auth.exceptions import RefreshError
+
+from app.calendar_client import CalendarNotConfigured, load_credentials, normalize_event, sort_events, visible_calendars
 
 
 def test_normalize_timed_and_all_day_events():
@@ -26,6 +29,24 @@ def test_all_day_events_come_first():
     ordered = sort_events(events)
 
     assert [e["start"] for e in ordered] == ["2026-11-10", "2026-11-10T08:00:00+01:00", "2026-11-10T09:00:00+01:00"]
+
+
+def test_expired_google_grant_asks_for_a_new_login(tmp_path, monkeypatch):
+    token = tmp_path / "google_token.json"
+    token.write_text("{}", encoding="utf-8")
+
+    class Expired:
+        valid = False
+        expired = True
+        refresh_token = "present"
+
+        def refresh(self, _request):
+            raise RefreshError("Token has been expired or revoked.")
+
+    monkeypatch.setattr("google.oauth2.credentials.Credentials.from_authorized_user_file", lambda *_a, **_k: Expired())
+
+    with pytest.raises(CalendarNotConfigured, match="scaduto o è stato rimosso"):
+        load_credentials(token)
 
 
 def test_visible_calendars_keeps_only_checked_ones():

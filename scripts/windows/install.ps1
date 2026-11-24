@@ -3,7 +3,7 @@
     One-time setup on the hub PC (no admin rights needed).
     - creates the Python virtualenv and installs dependencies
     - creates hub-server\.env with a random token if missing
-    - registers the "DailyHub Server" task that starts the server at logon
+    - removes the old logon task: the server now starts and stops with the dashboard
     - opens the Windows Firewall port (only if run as administrator)
 #>
 . (Join-Path $PSScriptRoot 'common.ps1')
@@ -27,13 +27,11 @@ if (-not (Test-Path $EnvFile)) {
     Write-Host "API token (configure it in the Android app): $token" -ForegroundColor Yellow
 }
 
-$action = New-ScheduledTaskAction -Execute $VenvPythonW -Argument 'run.py' -WorkingDirectory $ServerDir
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
-    -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 5 -RestartInterval (New-TimeSpan -Minutes 1) -StartWhenAvailable
-Register-ScheduledTask -TaskName $ServerTaskName -Action $action -Trigger $trigger -Settings $settings `
-    -Description 'Daily Hub API + dashboard' -Force | Out-Null
-Write-Host "Registered scheduled task '$ServerTaskName' (starts at logon)."
+$task = Get-ScheduledTask -TaskName $ServerTaskName -ErrorAction SilentlyContinue
+if ($task) {
+    Unregister-ScheduledTask -TaskName $ServerTaskName -Confirm:$false
+    Write-Host "Removed scheduled task '$ServerTaskName'. The server starts when you open the dashboard and stops when you close it."
+}
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
     [Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -49,7 +47,5 @@ if ($isAdmin) {
     Write-Host "  New-NetFirewallRule -DisplayName 'Daily Hub' -Direction Inbound -Protocol TCP -LocalPort $port -Action Allow -Profile Private"
 }
 
-Stop-HubServer
-Start-HubServer
-Write-Host "Server started: http://localhost:$port"
+Write-Host "Open the dashboard with scripts\windows\show_dashboard.ps1 (it starts the server and closes it with the window)."
 Write-Host 'Next: enable wake timers (see docs/windows-setup.md) and run google_auth for the calendar.'

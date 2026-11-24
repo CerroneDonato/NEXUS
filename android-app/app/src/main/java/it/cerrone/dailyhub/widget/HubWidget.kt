@@ -1,25 +1,23 @@
 package it.cerrone.dailyhub.widget
 
 import android.content.Context
-import androidx.annotation.DrawableRes
+import android.content.Intent
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
-import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
-import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
-import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -36,48 +34,79 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import it.cerrone.dailyhub.AlarmSync
 import it.cerrone.dailyhub.EventInfo
 import it.cerrone.dailyhub.MainActivity
 import it.cerrone.dailyhub.Prefs
 import it.cerrone.dailyhub.R
+import it.cerrone.dailyhub.tr
 import it.cerrone.dailyhub.RefreshWorker
-import it.cerrone.dailyhub.Sky
 import it.cerrone.dailyhub.TaskInfo
 import it.cerrone.dailyhub.TodaySnapshot
-import it.cerrone.dailyhub.WeatherInfo
+import it.cerrone.dailyhub.dueLabel
 import it.cerrone.dailyhub.focusEvent
 import it.cerrone.dailyhub.formatTime
+import it.cerrone.dailyhub.italianDate
 import it.cerrone.dailyhub.parseToday
-import it.cerrone.dailyhub.skyFor
+import it.cerrone.dailyhub.skyAccent
+import it.cerrone.dailyhub.skyOf
+import it.cerrone.dailyhub.widgetRows
 import java.text.DateFormat
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.OffsetDateTime
 import java.util.Date
-import kotlin.math.roundToInt
 
-private val White = ColorProvider(Color(0xFFFFFFFF))
-private val Soft = ColorProvider(Color(0xD9FFFFFF))
-private val Faint = ColorProvider(Color(0x8CFFFFFF))
-private val Warn = ColorProvider(Color(0xFFFFB199))
+/*
+ * Heights in dp used to decide how many whole lines fit. They are slightly generous
+ * so the last line never ends up cut by the launcher.
+ */
+private val PAD_V = 14.dp
+private val HEADER_H = 42.dp
+private val FOCUS_CARD_H = 72.dp
+private val LINE_H = 23.dp
+private val OFFLINE_H = 16.dp
+private val GAP_H = 10.dp
 
-private const val MAX_EVENTS = 3
-private const val MAX_TASKS = 4
-
+/**
+ * Agenda and tasks of today. Keeps the original class name so the widget already on the home screen
+ * becomes this one after the update instead of disappearing.
+ */
 class HubWidget : GlanceAppWidget() {
-    override val sizeMode: SizeMode = SizeMode.Exact
+    /** The launcher picks the largest layout that fits, so the content always matches the real size. */
+    override val sizeMode: SizeMode = SizeMode.Responsive(
+        listOf(110.dp, 180.dp, 250.dp, 320.dp, 400.dp, 480.dp, 560.dp, 660.dp)
+            .flatMap { h -> listOf(DpSize(200.dp, h), DpSize(300.dp, h)) }
+            .toSet(),
+    )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val prefs = Prefs(context)
         val snapshot = prefs.lastSnapshotJson?.let { runCatching { parseToday(it) }.getOrNull() }
-        val updated = prefs.lastUpdateMillis
-        val error = prefs.lastError
-        val configured = prefs.isConfigured
+        val state = AgendaState(
+            updated = prefs.lastUpdateMillis,
+            error = prefs.lastError,
+            configured = true,
+            alarm = AlarmSync.nextAlarmIso(context),
+        )
         val now = OffsetDateTime.now()
         provideContent {
-            WidgetContent(snapshot, updated, error, configured, now)
+            AgendaContent(snapshot, state, now)
         }
     }
+
+    companion object {
+        /** Redraws every NEXUS widget, for state that changes outside a refresh (sport mode, alarm). */
+        fun refresh(context: Context) = NexusWidgets.refresh(context)
+    }
 }
+
+private data class AgendaState(
+    val updated: Long,
+    val error: String?,
+    val configured: Boolean,
+    val alarm: String?,
+)
 
 class HubWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = HubWidget()
@@ -89,116 +118,61 @@ class HubWidgetReceiver : GlanceAppWidgetReceiver() {
     }
 }
 
-class RefreshAction : ActionCallback {
-    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        RefreshWorker.refreshNow(context)
-    }
-}
-
-@DrawableRes
-private fun backgroundFor(sky: Sky): Int = when (sky) {
-    Sky.CLEAR_DAY -> R.drawable.bg_clear_day
-    Sky.CLEAR_NIGHT -> R.drawable.bg_clear_night
-    Sky.CLOUDY_DAY -> R.drawable.bg_cloudy_day
-    Sky.CLOUDY_NIGHT -> R.drawable.bg_cloudy_night
-    Sky.RAIN -> R.drawable.bg_rain
-    Sky.STORM -> R.drawable.bg_storm
-    Sky.SNOW -> R.drawable.bg_snow
-    Sky.FOG -> R.drawable.bg_fog
-}
-
-private fun accentFor(sky: Sky): ColorProvider = ColorProvider(
-    when (sky) {
-        Sky.CLEAR_DAY -> Color(0xFFFFD36B)
-        Sky.CLEAR_NIGHT -> Color(0xFFB9C4FF)
-        Sky.CLOUDY_DAY, Sky.CLOUDY_NIGHT -> Color(0xFFCFE3FF)
-        Sky.RAIN -> Color(0xFF8FD0FF)
-        Sky.STORM -> Color(0xFFD2B4FF)
-        Sky.SNOW, Sky.FOG -> Color(0xFFFFFFFF)
-    },
-)
-
-@DrawableRes
-private fun weatherIconFor(icon: String, isDay: Boolean): Int = when (icon) {
-    "clear" -> if (isDay) R.drawable.ic_wx_clear_day else R.drawable.ic_wx_clear_night
-    "partly-cloudy" -> if (isDay) R.drawable.ic_wx_partly_day else R.drawable.ic_wx_partly_night
-    "fog" -> R.drawable.ic_wx_fog
-    "drizzle", "rain" -> R.drawable.ic_wx_rain
-    "storm" -> R.drawable.ic_wx_storm
-    "snow" -> R.drawable.ic_wx_snow
-    else -> R.drawable.ic_wx_cloudy
-}
-
 @Composable
-private fun WidgetContent(snapshot: TodaySnapshot?, updated: Long, error: String?, configured: Boolean, now: OffsetDateTime) {
-    val weather = snapshot?.weather
-    val daytime = LocalTime.now().hour in 7..17
-    val sky = skyFor(weather?.icon, weather?.isDay ?: daytime)
-    val accent = accentFor(sky)
-    val compact = LocalSize.current.height < 190.dp
+private fun AgendaContent(snapshot: TodaySnapshot?, state: AgendaState, now: OffsetDateTime) {
+    val accent = ColorProvider(skyAccent(skyOf(snapshot, LocalTime.now().hour)))
+    val size = LocalSize.current
+    val offline = snapshot != null && state.error != null
+    val focus = snapshot?.takeIf { it.calendarError == null }?.let { focusEvent(it.events, now) }
+
+    var space = size.height - PAD_V * 2 - HEADER_H - GAP_H
+    if (offline) space -= OFFLINE_H
+    val focusAsCard = focus != null && space >= FOCUS_CARD_H + LINE_H * 2
+    space -= if (focusAsCard) FOCUS_CARD_H else LINE_H
+    val lines = (space.value / LINE_H.value).toInt().coerceAtLeast(0)
 
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(ImageProvider(backgroundFor(sky)))
-            .padding(horizontal = 16.dp, vertical = 14.dp)
-            .clickable(actionStartActivity<MainActivity>()),
+            .background(ImageProvider(R.drawable.bg_widget))
+            .padding(horizontal = 16.dp, vertical = PAD_V)
+            .clickable(actionStartActivity(Intent(LocalContext.current, MainActivity::class.java))),
     ) {
-        Header(weather, snapshot?.weatherError, updated, accent)
-        Spacer(GlanceModifier.height(10.dp))
-        when {
-            !configured -> Text("Apri l'app e configura indirizzo e token dell'hub", style = TextStyle(color = Soft, fontSize = 13.sp))
-            snapshot == null -> Text(error ?: "In attesa del primo aggiornamento...", style = TextStyle(color = Soft, fontSize = 13.sp))
-            else -> Body(snapshot, now, accent, compact)
+        AgendaHeader(snapshot?.date ?: LocalDate.now(), state, accent)
+        Spacer(GlanceModifier.height(GAP_H))
+        Column(modifier = GlanceModifier.defaultWeight().fillMaxWidth()) {
+            when {
+                !state.configured -> Text(tr("Apri l'app e configura indirizzo e token dell'hub", "Open the app and set the hub address and token"), style = TextStyle(color = Soft, fontSize = 13.sp), maxLines = 2)
+                snapshot == null -> Text(state.error ?: tr("In attesa del primo aggiornamento...", "Waiting for the first update..."), style = TextStyle(color = Soft, fontSize = 13.sp), maxLines = 2)
+                else -> Body(snapshot, focus?.event, focus?.ongoing == true, focusAsCard, lines, accent)
+            }
         }
-        if (snapshot != null && error != null) {
-            Text("Offline: $error", style = TextStyle(color = Warn, fontSize = 11.sp), maxLines = 1)
+        if (offline) {
+            Text(tr("Offline: ${state.error}", "Offline: ${state.error}"), style = TextStyle(color = Warn, fontSize = 11.sp), maxLines = 1)
         }
     }
 }
 
+/** "OGGI" and the date on the left; next alarm and last update (tap to refresh) on the right. */
 @Composable
-private fun Header(weather: WeatherInfo?, weatherError: String?, updated: Long, accent: ColorProvider) {
+private fun AgendaHeader(date: LocalDate, state: AgendaState, accent: ColorProvider) {
     Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        if (weather != null) {
-            Image(
-                provider = ImageProvider(weatherIconFor(weather.icon, weather.isDay)),
-                contentDescription = weather.description,
-                modifier = GlanceModifier.size(54.dp),
-            )
-            Spacer(GlanceModifier.width(10.dp))
-        }
         Column(modifier = GlanceModifier.defaultWeight()) {
-            Text(
-                text = weather?.temperature?.let { "${it.roundToInt()}°" } ?: "NEXUS",
-                style = TextStyle(color = White, fontSize = 40.sp, fontWeight = FontWeight.Normal),
-            )
-            Text(
-                text = weather?.description ?: weatherError ?: "",
-                style = TextStyle(color = if (weather != null) Soft else Warn, fontSize = 13.sp, fontWeight = FontWeight.Medium),
-                maxLines = 1,
-            )
+            Text("OGGI", style = TextStyle(color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold))
+            Text(italianDate(date), style = TextStyle(color = White, fontSize = 17.sp, fontWeight = FontWeight.Medium), maxLines = 1)
         }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                (weather?.city ?: "NEXUS").uppercase(),
-                style = TextStyle(color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold),
-            )
-            if (weather != null) {
-                Text(
-                    "${weather.min?.roundToInt() ?: "--"}° / ${weather.max?.roundToInt() ?: "--"}°",
-                    style = TextStyle(color = Soft, fontSize = 13.sp),
-                )
-                Text("Pioggia ${weather.precipitationProbability ?: "--"}%", style = TextStyle(color = Faint, fontSize = 11.sp))
+        Column(horizontalAlignment = Alignment.End, modifier = GlanceModifier.clickable(actionRunCallback<RefreshAction>())) {
+            if (state.alarm != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(ImageProvider(R.drawable.ic_alarm), contentDescription = tr("Sveglia", "Alarm"), modifier = GlanceModifier.size(12.dp))
+                    Text(" ${formatTime(state.alarm)}", style = TextStyle(color = Soft, fontSize = 12.sp))
+                }
             }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = GlanceModifier.padding(top = 4.dp).clickable(actionRunCallback<RefreshAction>()),
-            ) {
-                Image(ImageProvider(R.drawable.ic_refresh), contentDescription = "Aggiorna", modifier = GlanceModifier.size(12.dp))
-                if (updated > 0) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(ImageProvider(R.drawable.ic_refresh), contentDescription = tr("Aggiorna", "Refresh"), modifier = GlanceModifier.size(11.dp))
+                if (state.updated > 0) {
                     Text(
-                        " " + DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(updated)),
+                        " " + DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(state.updated)),
                         style = TextStyle(color = Faint, fontSize = 11.sp),
                     )
                 }
@@ -208,42 +182,37 @@ private fun Header(weather: WeatherInfo?, weatherError: String?, updated: Long, 
 }
 
 @Composable
-private fun Body(snapshot: TodaySnapshot, now: OffsetDateTime, accent: ColorProvider, compact: Boolean) {
-    val focus = focusEvent(snapshot.events, now)
-    LazyColumn {
-        if (snapshot.calendarError != null) {
-            item { Text("Calendario non collegato", style = TextStyle(color = Faint, fontSize = 12.sp)) }
-        } else if (focus != null) {
-            item { FocusCard(focus.event, focus.ongoing, accent) }
-        } else {
-            item { Text(if (snapshot.events.isEmpty()) "Agenda libera oggi" else "Impegni di oggi completati", style = TextStyle(color = Soft, fontSize = 13.sp)) }
-        }
+private fun Body(
+    snapshot: TodaySnapshot,
+    focus: EventInfo?,
+    ongoing: Boolean,
+    focusAsCard: Boolean,
+    lines: Int,
+    accent: ColorProvider,
+) {
+    when {
+        snapshot.calendarError != null -> Text(tr("Calendario non collegato", "Calendar not connected"), style = TextStyle(color = Faint, fontSize = 12.sp), maxLines = 1)
+        focus != null && focusAsCard -> FocusCard(focus, ongoing, accent)
+        focus != null -> EventLine(focus, highlight = accent)
+        else -> Text(
+            if (snapshot.events.isEmpty()) tr("Agenda libera oggi", "Nothing on the agenda today") else tr("Impegni di oggi completati", "Today's events are over"),
+            style = TextStyle(color = Soft, fontSize = 13.sp),
+            maxLines = 1,
+        )
+    }
 
-        if (!compact) {
-            val others = snapshot.events.filter { it != focus?.event }.take(MAX_EVENTS)
-            if (others.isNotEmpty()) {
-                item { SectionTitle("Agenda", accent) }
-                others.forEach { event -> item { EventLine(event) } }
-            }
-
-            item { SectionTitle(if (snapshot.tasks.isEmpty()) "Task" else "Task · ${snapshot.tasks.size}", accent) }
-            if (snapshot.tasks.isEmpty()) {
-                item { Text("Tutto fatto", style = TextStyle(color = Faint, fontSize = 13.sp)) }
-            }
-            snapshot.tasks.take(MAX_TASKS).forEach { task -> item { TaskLine(task, snapshot) } }
-            if (snapshot.tasks.size > MAX_TASKS) {
-                item { Text("+${snapshot.tasks.size - MAX_TASKS} altri", style = TextStyle(color = Faint, fontSize = 12.sp)) }
-            }
+    val others = snapshot.events.filter { it != focus }
+    val rows = widgetRows(lines, others.size, snapshot.tasks.size)
+    if (rows.events > 0) {
+        SectionTitle(tr("Agenda", "Agenda"), accent)
+        others.take(rows.events).forEach { EventLine(it) }
+    }
+    if (rows.showTasks) {
+        SectionTitle(if (snapshot.tasks.isEmpty()) tr("Task", "Tasks") else tr("Task · ${snapshot.tasks.size}", "Tasks · ${snapshot.tasks.size}"), accent)
+        if (snapshot.tasks.isEmpty()) {
+            Text(tr("Tutto fatto", "All done"), style = TextStyle(color = Faint, fontSize = 13.sp), maxLines = 1)
         }
-
-        snapshot.nextAlarm?.let { alarm ->
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = GlanceModifier.padding(top = 8.dp)) {
-                    Image(ImageProvider(R.drawable.ic_alarm), contentDescription = "Sveglia", modifier = GlanceModifier.size(13.dp))
-                    Text("  Sveglia ${formatTime(alarm)}", style = TextStyle(color = Faint, fontSize = 11.sp))
-                }
-            }
-        }
+        snapshot.tasks.take(rows.tasks).forEach { TaskLine(it, snapshot) }
     }
 }
 
@@ -261,7 +230,7 @@ private fun FocusCard(event: EventInfo, ongoing: Boolean, accent: ColorProvider)
             .padding(horizontal = 12.dp, vertical = 9.dp),
     ) {
         Text(
-            if (ongoing) "IN CORSO" else "PROSSIMO",
+            if (ongoing) tr("IN CORSO", "NOW") else tr("PROSSIMO", "NEXT"),
             style = TextStyle(color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold),
         )
         Text(event.title, style = TextStyle(color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold), maxLines = 1)
@@ -274,16 +243,17 @@ private fun SectionTitle(title: String, accent: ColorProvider) {
     Text(
         title.uppercase(),
         style = TextStyle(color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold),
-        modifier = GlanceModifier.padding(top = 10.dp, bottom = 3.dp),
+        maxLines = 1,
+        modifier = GlanceModifier.padding(top = 8.dp, bottom = 2.dp),
     )
 }
 
 @Composable
-private fun EventLine(event: EventInfo) {
+private fun EventLine(event: EventInfo, highlight: ColorProvider? = null) {
     Row(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            if (event.allDay) "Giorno" else event.timeLabel,
-            style = TextStyle(color = Soft, fontSize = 13.sp, fontWeight = FontWeight.Medium),
+            if (event.allDay) tr("Giorno", "Day") else event.timeLabel,
+            style = TextStyle(color = highlight ?: Soft, fontSize = 13.sp, fontWeight = FontWeight.Medium),
             modifier = GlanceModifier.width(52.dp),
         )
         Text(event.title, style = TextStyle(color = White, fontSize = 13.sp), maxLines = 1)
@@ -292,12 +262,7 @@ private fun EventLine(event: EventInfo) {
 
 @Composable
 private fun TaskLine(task: TaskInfo, snapshot: TodaySnapshot) {
-    val due = when {
-        task.due == null -> null
-        task.overdue -> "Scaduto"
-        task.due == snapshot.date -> "Oggi"
-        else -> "${task.due.dayOfMonth}/${task.due.monthValue}"
-    }
+    val due = dueLabel(task, snapshot.date)
     Row(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text("○  ", style = TextStyle(color = if (task.overdue) Warn else Faint, fontSize = 13.sp))
         Text(
@@ -310,6 +275,7 @@ private fun TaskLine(task: TaskInfo, snapshot: TodaySnapshot) {
             Text(
                 due,
                 style = TextStyle(color = if (task.overdue) Warn else Soft, fontSize = 11.sp, fontWeight = FontWeight.Medium),
+                maxLines = 1,
                 modifier = GlanceModifier
                     .background(ImageProvider(if (task.overdue) R.drawable.chip_warn else R.drawable.chip_soft))
                     .padding(horizontal = 7.dp, vertical = 2.dp),

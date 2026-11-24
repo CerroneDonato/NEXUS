@@ -5,6 +5,7 @@ import org.json.JSONObject
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 data class WeatherInfo(
     val city: String,
@@ -15,7 +16,77 @@ data class WeatherInfo(
     val precipitationProbability: Int?,
     val icon: String = "unknown",
     val isDay: Boolean = true,
+    val daily: List<DayForecast> = emptyList(),
 )
+
+data class DayForecast(
+    val date: LocalDate,
+    val min: Double,
+    val max: Double,
+    val precipitationProbability: Int?,
+    val description: String,
+    val icon: String,
+)
+
+/** Calendar words follow the app language, not the phone's. */
+private val textLocale: java.util.Locale get() = if (Lang.isEnglish) java.util.Locale.ENGLISH else java.util.Locale.ITALIAN
+
+/** "Oggi" for today, otherwise the short weekday without the trailing dot: "Ven". */
+fun dayLabel(date: LocalDate, today: LocalDate): String =
+    if (date == today) tr("Oggi", "Today")
+    else DateTimeFormatter.ofPattern("EEE", textLocale).format(date).removeSuffix(".").replaceFirstChar { it.uppercase() }
+
+private val MONTHS_SHORT = listOf("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic")
+private val MONTHS_SHORT_EN = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+/** Compact day and month, same words as the dashboard: "13 nov". */
+fun dayMonthLabel(date: LocalDate): String =
+    "${date.dayOfMonth} ${(if (Lang.isEnglish) MONTHS_SHORT_EN else MONTHS_SHORT)[date.monthValue - 1]}"
+
+private val WEATHER_EN = mapOf(
+    "Sereno" to "Clear", "Prevalentemente sereno" to "Mostly clear", "Parzialmente nuvoloso" to "Partly cloudy",
+    "Coperto" to "Overcast", "Nebbia" to "Fog", "Nebbia con brina" to "Rime fog",
+    "Pioviggine leggera" to "Light drizzle", "Pioviggine" to "Drizzle", "Pioviggine intensa" to "Heavy drizzle",
+    "Pioviggine gelata" to "Freezing drizzle", "Pioviggine gelata intensa" to "Heavy freezing drizzle",
+    "Pioggia leggera" to "Light rain", "Pioggia" to "Rain", "Pioggia forte" to "Heavy rain",
+    "Pioggia gelata" to "Freezing rain", "Pioggia gelata forte" to "Heavy freezing rain",
+    "Neve leggera" to "Light snow", "Neve" to "Snow", "Neve forte" to "Heavy snow", "Nevischio" to "Sleet",
+    "Rovesci leggeri" to "Light showers", "Rovesci" to "Showers", "Rovesci violenti" to "Violent showers",
+    "Rovesci di neve" to "Snow showers", "Rovesci di neve forti" to "Heavy snow showers",
+    "Temporale" to "Thunderstorm", "Temporale con grandine" to "Thunderstorm with hail",
+    "Temporale con grandine forte" to "Thunderstorm with heavy hail",
+    "Meteo non disponibile" to "Weather unavailable",
+)
+
+/** Weather descriptions arrive in Italian (hub and phone); in English they are translated for display. */
+fun weatherText(italian: String): String = if (Lang.isEnglish) WEATHER_EN[italian] ?: italian else italian
+
+private val TEMP_STOPS = listOf(
+    -5.0 to 0x7CAAFF, 5.0 to 0x7CC7FF, 12.0 to 0x6FE3C4, 19.0 to 0xFFD37A, 27.0 to 0xFF965A,
+)
+
+/** Opaque ARGB colour for a temperature, from cold blue to warm orange; matches the dashboard. */
+fun tempArgb(celsius: Double): Int {
+    fun opaque(rgb: Int) = (0xFF shl 24) or rgb
+    if (celsius <= TEMP_STOPS.first().first) return opaque(TEMP_STOPS.first().second)
+    for (i in 1 until TEMP_STOPS.size) {
+        val (t1, c1) = TEMP_STOPS[i]
+        val (t0, c0) = TEMP_STOPS[i - 1]
+        if (celsius <= t1) {
+            val k = (celsius - t0) / (t1 - t0)
+            fun channel(shift: Int): Int {
+                val a = (c0 shr shift) and 0xFF
+                val b = (c1 shr shift) and 0xFF
+                return Math.round(a + (b - a) * k).toInt() shl shift
+            }
+            return opaque(channel(16) or channel(8) or channel(0))
+        }
+    }
+    return opaque(TEMP_STOPS.last().second)
+}
+
+/** Rain chance worth showing next to an icon, as in weather apps: hidden below 20%. */
+fun rainLabel(probability: Int?): String? = probability?.takeIf { it >= 20 }?.let { "$it%" }
 
 data class EventInfo(
     val title: String,
@@ -25,8 +96,11 @@ data class EventInfo(
     val location: String? = null,
 ) {
     val timeLabel: String
-        get() = if (allDay || start == null) "Tutto il giorno" else formatTime(start)
+        get() = if (allDay || start == null) tr("Tutto il giorno", "All day") else formatTime(start)
 }
+
+/** One day of the coming week, as returned by `/api/today` in `week`. */
+data class DayAgenda(val date: LocalDate, val events: List<EventInfo>)
 
 /** Widget background family, derived from the server's weather icon key. */
 enum class Sky { CLEAR_DAY, CLEAR_NIGHT, CLOUDY_DAY, CLOUDY_NIGHT, RAIN, STORM, SNOW, FOG }
@@ -44,6 +118,22 @@ data class FocusEvent(val event: EventInfo, val ongoing: Boolean)
 
 private fun parseInstant(iso: String?): OffsetDateTime? = iso?.let { runCatching { OffsetDateTime.parse(it) }.getOrNull() }
 
+/**
+ * Compact countdown until a later event: "Tra 1 h 46 min" ("In 1 h 46 min" in English).
+ * Null once the event has started, or when the start cannot be read.
+ */
+fun countdownLabel(startIso: String?, now: OffsetDateTime): String? {
+    val start = parseInstant(startIso) ?: return null
+    if (!start.isAfter(now)) return null
+    val total = kotlin.math.round(java.time.Duration.between(now, start).toMillis() / 60000.0).toInt().coerceAtLeast(0)
+    val lead = tr("Tra", "In")
+    if (total < 1) return tr("Tra ora", "In a moment")
+    if (total < 60) return "$lead $total min"
+    val hours = total / 60
+    val minutes = total % 60
+    return if (minutes == 0) "$lead $hours h" else "$lead $hours h $minutes min"
+}
+
 /** The event happening now, otherwise the next one starting later today. All-day events are ignored. */
 fun focusEvent(events: List<EventInfo>, now: OffsetDateTime): FocusEvent? {
     for (event in events) {
@@ -55,7 +145,128 @@ fun focusEvent(events: List<EventInfo>, now: OffsetDateTime): FocusEvent? {
     return null
 }
 
-data class TaskInfo(val id: Long, val title: String, val due: LocalDate?, val overdue: Boolean, val done: Boolean)
+/** How many agenda and task lines the widget shows, so no row is ever cut in half. */
+data class WidgetRows(val events: Int, val tasks: Int, val showTasks: Boolean)
+
+/**
+ * Splits [rows] whole lines between the other events of today and the tasks.
+ * The task section (title plus one line) comes first, up to two events follow,
+ * then the remaining lines go to tasks and finally to more events.
+ */
+fun widgetRows(rows: Int, events: Int, tasks: Int): WidgetRows {
+    if (rows < 2) return WidgetRows(events = 0, tasks = 0, showTasks = false)
+    var left = rows - 2
+    var shownTasks = minOf(tasks, 1)
+    var shownEvents = 0
+    if (events > 0 && left >= 2) {
+        shownEvents = minOf(events, 2, left - 1)
+        left -= 1 + shownEvents
+    }
+    val moreTasks = minOf(tasks - shownTasks, left)
+    shownTasks += moreTasks
+    left -= moreTasks
+    if (shownEvents > 0) shownEvents += minOf(events - shownEvents, left)
+    return WidgetRows(shownEvents, shownTasks, showTasks = true)
+}
+
+/** A quiet notification to post at [atMillis]; [key] identifies the event across refreshes. */
+data class Reminder(val key: String, val title: String, val text: String, val atMillis: Long)
+
+const val REMINDER_LEAD_MINUTES = 15L
+
+/** One reminder per timed event, [leadMinutes] before it starts, only if that moment is still ahead. */
+fun reminderPlan(
+    events: List<EventInfo>,
+    now: OffsetDateTime,
+    leadMinutes: Long = REMINDER_LEAD_MINUTES,
+): List<Reminder> = events.mapNotNull { event ->
+    if (event.allDay) return@mapNotNull null
+    val start = parseInstant(event.start) ?: return@mapNotNull null
+    val at = start.minusMinutes(leadMinutes)
+    if (!at.isAfter(now)) return@mapNotNull null
+    val text = buildString {
+        append(tr("Tra $leadMinutes minuti · ", "In $leadMinutes minutes · ")).append(formatTime(event.start!!))
+        event.end?.let { append(" – ").append(formatTime(it)) }
+        event.location?.takeIf { it.isNotBlank() }?.let { append(" · ").append(it) }
+    }
+    Reminder("${event.title}|${event.start}", event.title, text, at.toInstant().toEpochMilli())
+}
+
+/** Title and lines of the silent morning notification. */
+fun briefingText(snapshot: TodaySnapshot, now: OffsetDateTime): Pair<String, List<String>> {
+    val weather = snapshot.weather
+    val title = buildString {
+        append(greetingFor(now.hour))
+        weather?.temperature?.let { append(" · ${it.roundToInt()}° ") }
+        weather?.description?.takeIf { it.isNotBlank() }?.let { append(it.lowercase()) }
+    }.trim()
+    val lines = buildList {
+        if (weather != null) {
+            val rain = weather.precipitationProbability
+            val range = "${weather.min?.roundToInt() ?: "--"}° / ${weather.max?.roundToInt() ?: "--"}°"
+            add(
+                if (rain != null && rain >= 50) tr("$range · pioggia al $rain%, meglio l'ombrello", "$range · $rain% chance of rain, take an umbrella")
+                else tr("$range · pioggia al ${rain ?: "--"}%", "$range · ${rain ?: "--"}% chance of rain"),
+            )
+        }
+        if (snapshot.calendarError == null) {
+            val focus = focusEvent(snapshot.events, now)
+            val allDay = snapshot.events.firstOrNull { it.allDay }
+            when {
+                focus != null -> {
+                    val more = snapshot.events.count { !it.allDay && parseInstant(it.end ?: it.start)?.isAfter(now) == true } - 1
+                    add("${focus.event.timeLabel} ${focus.event.title}" + if (more > 0) " · " + tr("altri $more", "$more more") else "")
+                }
+                allDay != null -> add(tr("Tutto il giorno: ${allDay.title}", "All day: ${allDay.title}"))
+                else -> add(tr("Agenda libera", "Nothing on the agenda"))
+            }
+        }
+        val dueToday = snapshot.tasks.count { it.due == snapshot.date }
+        val overdue = snapshot.tasks.count { it.overdue }
+        val bits = listOfNotNull(
+            dueToday.takeIf { it > 0 }?.let { tr("$it in scadenza oggi", "$it due today") },
+            overdue.takeIf { it > 0 }?.let { tr("$it ${if (it == 1) "scaduto" else "scaduti"}", "$it overdue") },
+        )
+        add(if (bits.isEmpty()) tr("Nessun task in scadenza", "No tasks due") else "Task: ${bits.joinToString(" · ")}")
+    }
+    return title to lines
+}
+
+data class TaskInfo(
+    val id: Long,
+    val title: String,
+    val due: LocalDate?,
+    val overdue: Boolean,
+    val done: Boolean,
+    val uid: String = "",
+)
+
+/** Short due chip text: "Scaduto", "Oggi", "Domani" or day/month. */
+fun dueLabel(task: TaskInfo, today: LocalDate): String? = when {
+    task.due == null -> null
+    task.overdue -> tr("Scaduto", "Overdue")
+    task.due == today -> tr("Oggi", "Today")
+    task.due == today.plusDays(1) -> tr("Domani", "Tomorrow")
+    else -> "${task.due.dayOfMonth}/${task.due.monthValue}"
+}
+
+fun greetingFor(hour: Int): String = when (hour) {
+    in 5..11 -> tr("Buongiorno", "Good morning")
+    in 12..17 -> tr("Buon pomeriggio", "Good afternoon")
+    in 18..22 -> tr("Buonasera", "Good evening")
+    else -> tr("Buonanotte", "Good night")
+}
+
+/** "Mercoledì 11 novembre" ("Wednesday 11 November" in English). */
+fun italianDate(date: LocalDate): String =
+    DateTimeFormatter.ofPattern("EEEE d MMMM", textLocale).format(date).replaceFirstChar { it.uppercase() }
+
+/** Reply text prepared for text-to-speech: list markers dropped, line breaks become pauses. */
+fun speakable(text: String): String =
+    text.replace(Regex("(?m)^\\s*[-•*]\\s*"), "")
+        .replace(Regex("([^.:;!?\\s])\\s*\\n+"), "\$1. ")
+        .replace(Regex("\\s*\\n+"), " ")
+        .trim()
 
 data class TodaySnapshot(
     val date: LocalDate,
@@ -65,6 +276,7 @@ data class TodaySnapshot(
     val calendarError: String?,
     val tasks: List<TaskInfo>,
     val nextAlarm: String?,
+    val week: List<DayAgenda> = emptyList(),
 )
 
 private val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -84,11 +296,12 @@ private inline fun <T> JSONArray?.mapObjects(transform: (JSONObject) -> T): List
 }
 
 fun parseTask(obj: JSONObject) = TaskInfo(
-    id = obj.getLong("id"),
+    id = obj.optLong("id"),
     title = obj.getString("title"),
     due = obj.str("due")?.let(LocalDate::parse),
     overdue = obj.optBoolean("overdue"),
     done = obj.optBoolean("done"),
+    uid = obj.optString("uid"),
 )
 
 fun parseTasks(json: String): List<TaskInfo> = JSONArray(json).mapObjects(::parseTask)
@@ -111,9 +324,50 @@ fun parseChatResult(json: String): ChatResult {
     )
 }
 
+/** One saved conversation in the history list. [source] is "pc", "phone" or "sport". */
+data class ChatSummary(val id: String, val title: String, val lastAt: String, val messages: Int, val source: String)
+
+data class StoredMessage(val fromUser: Boolean, val text: String, val actions: List<String>)
+
+fun parseHistory(json: String): List<ChatSummary> = JSONArray(json).mapObjects { o ->
+    ChatSummary(o.optString("id"), o.optString("title"), o.optString("lastAt"), o.optInt("messages"), o.optString("source", "pc"))
+}.filter { it.id.isNotBlank() }
+
+fun parseStoredMessages(json: String): List<StoredMessage> {
+    val messages = JSONObject(json).optJSONArray("messages") ?: return emptyList()
+    return messages.mapObjects { o ->
+        val actions = o.optJSONArray("actions")
+        StoredMessage(
+            fromUser = o.optString("role") == "user",
+            text = o.optString("text"),
+            actions = if (actions == null) emptyList() else (0 until actions.length()).map { actions.getString(it) },
+        )
+    }
+}
+
+fun sourceLabel(source: String): String = when (source) {
+    "phone" -> tr("Telefono", "Phone")
+    "sport" -> "Sport"
+    else -> "PC"
+}
+
+/** "14:32" for today, "Ieri", otherwise "12 nov". Dates are compared in the zone of [now]. */
+fun historyWhenLabel(iso: String, now: OffsetDateTime): String {
+    val at = parseInstant(iso)?.withOffsetSameInstant(now.offset) ?: return ""
+    val days = java.time.temporal.ChronoUnit.DAYS.between(at.toLocalDate(), now.toLocalDate())
+    return when (days) {
+        0L -> at.format(TIME_FORMAT)
+        1L -> tr("Ieri", "Yesterday")
+        else -> dayMonthLabel(at.toLocalDate())
+    }
+}
+
 /** FastAPI error bodies look like {"detail": "..."}; validation errors use a list instead of a string. */
 fun errorDetail(body: String): String? =
     runCatching { JSONObject(body).opt("detail") as? String }.getOrNull()?.takeIf { it.isNotBlank() }
+
+private fun parseEvent(e: JSONObject) =
+    EventInfo(e.optString("title"), e.str("start"), e.optBoolean("allDay"), e.str("end"), e.str("location"))
 
 fun parseToday(json: String): TodaySnapshot {
     val root = JSONObject(json)
@@ -123,23 +377,33 @@ fun parseToday(json: String): TodaySnapshot {
         WeatherInfo(
             city = w.optString("city", "Milano"),
             temperature = current.dbl("temperature"),
-            description = current.str("description") ?: "",
+            description = weatherText(current.str("description") ?: ""),
             min = today.dbl("min"),
             max = today.dbl("max"),
             precipitationProbability = today.dbl("precipitationProbability")?.toInt(),
             icon = current.str("icon") ?: "unknown",
             isDay = current.optBoolean("isDay", true),
+            daily = w.optJSONArray("daily").mapObjects { d ->
+                val min = d.dbl("min")
+                val max = d.dbl("max")
+                val date = d.str("date")?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+                if (min == null || max == null || date == null) null
+                else DayForecast(date, min, max, d.dbl("precipitationProbability")?.toInt(), weatherText(d.str("description") ?: ""), d.str("icon") ?: "unknown")
+            }.filterNotNull(),
         )
     }
     return TodaySnapshot(
         date = LocalDate.parse(root.getString("date")),
         weather = weather,
-        weatherError = root.str("weatherError"),
-        events = root.optJSONArray("events").mapObjects { e ->
-            EventInfo(e.optString("title"), e.str("start"), e.optBoolean("allDay"), e.str("end"), e.str("location"))
-        },
+        weatherError = root.str("weatherError")?.let(::weatherText),
+        events = root.optJSONArray("events").mapObjects(::parseEvent),
         calendarError = root.str("calendarError"),
         tasks = root.optJSONArray("tasks").mapObjects(::parseTask),
         nextAlarm = root.optJSONObject("alarm")?.str("nextAlarm"),
+        week = root.optJSONArray("week").mapObjects { day ->
+            val date = day.str("date")?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            if (date == null) null
+            else DayAgenda(date, day.optJSONArray("events").mapObjects(::parseEvent))
+        }.filterNotNull(),
     )
 }

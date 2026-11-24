@@ -12,11 +12,12 @@ import uvicorn
 # Use the Windows certificate store so HTTPS works behind proxies with custom root CAs.
 truststore.inject_into_ssl()
 
+from app.announce import Announcer
 from app.assistant import GeminiClient
 from app.calendar_client import GoogleCalendarClient
 from app.config import load_settings
 from app.db import Database
-from app.main import HubServices, create_app
+from app.main import Heartbeat, HubServices, create_app, restore_wake
 from app.wake import create_wake_scheduler
 from app.weather import OpenMeteoClient
 
@@ -39,11 +40,18 @@ def build_app():
         calendar=GoogleCalendarClient(settings.google_token_file, settings.calendar_ids, settings.tz),
         wake=create_wake_scheduler(settings.wake_enabled),
         now=lambda: datetime.now(settings.tz),
-        assistant_model=GeminiClient(settings.gemini_api_key, settings.gemini_model) if settings.gemini_api_key else None,
+        assistant_model=GeminiClient(settings.gemini_api_key, settings.gemini_model, thinking=settings.gemini_thinking)
+        if settings.gemini_api_key else None,
+        heartbeat=Heartbeat(),
     )
-    return create_app(services), settings
+    return create_app(services), settings, services
 
 
 if __name__ == "__main__":
-    app, settings = build_app()
-    uvicorn.run(app, host=settings.host, port=settings.port)
+    app, settings, services = build_app()
+    restore_wake(services)
+    announcer = Announcer(settings.port)
+    try:
+        uvicorn.run(app, host=settings.host, port=settings.port)
+    finally:
+        announcer.close()

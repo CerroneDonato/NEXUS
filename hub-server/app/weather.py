@@ -60,6 +60,12 @@ class OpenMeteoClient:
         self._city = city
         self._http = http or httpx.Client(timeout=10.0)
 
+    def use_location(self, latitude: float, longitude: float, city: str) -> None:
+        """Point the next fetch at a location agreed through sync."""
+        self._params["latitude"] = latitude
+        self._params["longitude"] = longitude
+        self._city = city
+
     def fetch(self) -> dict[str, Any]:
         response = self._http.get(OPEN_METEO_URL, params=self._params)
         response.raise_for_status()

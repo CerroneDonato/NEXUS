@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Daily Hub</string>
-    <string name="widget_name">Daily Hub</string>
-    <string name="widget_description">Meteo, calendario e task di oggi</string>
+    <string name="widget_name">Agenda e task</string>
+    <string name="widget_description">Impegni e task di oggi</string>
+    <string name="weather_widget_name">Meteo</string>
+    <string name="weather_widget_description">Meteo attuale e prossimi giorni</string>
+    <string name="lilith_widget_name">Lilith e sport</string>
+    <string name="lilith_widget_description">Parla con Lilith o avvia la modalità sport</string>
 </resources>

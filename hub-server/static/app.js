@@ -3,12 +3,13 @@
 const TOKEN_KEY = "dailyHubToken";
 const REFRESH_MS = 60 * 1000;
 const RESUME_GAP_MS = 15 * 1000;
+const REVISION_MS = 4 * 1000;
 
 const $ = (id) => document.getElementById(id);
 
-const timeFmt = new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" });
-const dateFmt = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long" });
-const shortDateFmt = new Intl.DateTimeFormat("it-IT", { weekday: "short", day: "numeric", month: "short" });
+const timeFmt = new Intl.DateTimeFormat(LOCALE, { hour: "2-digit", minute: "2-digit" });
+const dateFmt = new Intl.DateTimeFormat(LOCALE, { weekday: "long", day: "numeric", month: "long" });
+const shortDateFmt = new Intl.DateTimeFormat(LOCALE, { weekday: "short", day: "numeric", month: "short" });
 
 /* ------------------------------------------------------------------ icons */
 
@@ -54,6 +55,18 @@ const UI_ICONS = {
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   send: '<path d="M4 12l16-8-6 16-2.5-6.5L4 12z"/>',
   restart: '<path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v4.5h4.5"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/>',
+  stop: '<rect x="7" y="7" width="10" height="10" rx="2"/>',
+  calendar: '<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  tasks: '<circle cx="12" cy="12" r="8"/><path d="M8.5 12.2l2.4 2.4 4.6-5"/>',
+  history: '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4.5V8.5H8"/><path d="M12 8v4.3l2.8 1.7"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  sync: '<path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/>',
+  spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  pin: '<path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
+  info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.2"/>',
+  edit: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4zM13.5 6.5l4 4"/>',
+  globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.3 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.3-3.8-8.5S9.4 5.9 12 3.5z"/>',
 };
 
 function uiIcon(name, strokeWidth = 1.8) {
@@ -83,7 +96,7 @@ const minutes = (ms) => Math.round(ms / 60000);
 
 function formatDuration(ms) {
   const total = Math.max(0, minutes(ms));
-  if (total < 1) return "ora";
+  if (total < 1) return t("ora");
   if (total < 60) return `${total} min`;
   const h = Math.floor(total / 60);
   const m = total % 60;
@@ -92,10 +105,10 @@ function formatDuration(ms) {
 
 function greetingFor(date) {
   const h = date.getHours();
-  if (h >= 5 && h < 12) return "Buongiorno";
-  if (h >= 12 && h < 18) return "Buon pomeriggio";
-  if (h >= 18 && h < 23) return "Buonasera";
-  return "Buonanotte";
+  if (h >= 5 && h < 12) return t("Buongiorno");
+  if (h >= 12 && h < 18) return t("Buon pomeriggio");
+  if (h >= 18 && h < 23) return t("Buonasera");
+  return t("Buonanotte");
 }
 
 /* ------------------------------------------------------------------ api */
@@ -123,11 +136,11 @@ async function api(path, options = {}) {
   if (response.status === 401) {
     localStorage.removeItem(TOKEN_KEY);
     showLogin();
-    throw new Error("Token non valido");
+    throw new Error(t("Token non valido"));
   }
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    const error = new Error(typeof body?.detail === "string" ? body.detail : `HTTP ${response.status}`);
+    const error = new Error(typeof body?.detail === "string" ? t(body.detail) : `HTTP ${response.status}`);
     error.status = response.status;
     throw error;
   }
@@ -418,7 +431,7 @@ function renderWeather(weather, error) {
   if (!weather) {
     icon.innerHTML = weatherIcon("unknown");
     $("wx-temp").textContent = "--";
-    $("wx-desc").textContent = error || "Meteo non disponibile";
+    $("wx-desc").textContent = t(error || "Meteo non disponibile");
     $("wx-city").textContent = "";
     renderForecast(null);
     return;
@@ -426,18 +439,18 @@ function renderWeather(weather, error) {
   const { current, today } = weather;
   icon.innerHTML = weatherIcon(current.icon, current.isDay);
   $("wx-temp").textContent = round(current.temperature);
-  $("wx-desc").textContent = current.description;
+  $("wx-desc").textContent = t(current.description);
   $("wx-city").textContent = weather.city;
 
   const sunrise = localDate(today.sunrise);
   const sunset = localDate(today.sunset);
   const items = [
-    ["minmax", "Min / Max", `${round(today.min)}° / ${round(today.max)}°`],
-    ["temp", "Percepita", `${round(current.apparentTemperature)}°`],
-    ["drop", "Pioggia", `${round(today.precipitationProbability)}%`],
-    ["wind", "Vento", `${round(current.windSpeed)} km/h`],
-    ["sunrise", "Alba", sunrise ? timeFmt.format(sunrise) : "--"],
-    ["sunset", "Tramonto", sunset ? timeFmt.format(sunset) : "--"],
+    ["minmax", t("Min / Max"), `${round(today.min)}° / ${round(today.max)}°`],
+    ["temp", t("Percepita"), `${round(current.apparentTemperature)}°`],
+    ["drop", t("Pioggia"), `${round(today.precipitationProbability)}%`],
+    ["wind", t("Vento"), `${round(current.windSpeed)} km/h`],
+    ["sunrise", t("Alba"), sunrise ? timeFmt.format(sunrise) : "--"],
+    ["sunset", t("Tramonto"), sunset ? timeFmt.format(sunset) : "--"],
   ];
   for (const [name, label, value] of items) {
     stats.append(el("div", { class: "stat" },
@@ -470,7 +483,7 @@ function renderForecast(weather) {
   host.replaceChildren();
   const hours = (weather && weather.hourly) || [];
   if (!hours.length) {
-    host.append(el("div", { class: "empty-state" }, "Previsioni non disponibili"));
+    host.append(el("div", { class: "empty-state" }, t("Previsioni non disponibili")));
     return;
   }
 
@@ -523,6 +536,61 @@ function renderForecast(weather) {
   host.append(row);
 }
 
+const weekdayShortFmt = new Intl.DateTimeFormat(LOCALE, { weekday: "short" });
+const dayMonthFmt = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "short" });
+
+/** Cold blue to warm orange, like the range bars of a weather app. */
+function tempColor(t) {
+  const stops = [[-5, [124, 170, 255]], [5, [124, 199, 255]], [12, [111, 227, 196]], [19, [255, 211, 122]], [27, [255, 150, 90]]];
+  if (t <= stops[0][0]) return `rgb(${stops[0][1]})`;
+  for (let i = 1; i < stops.length; i++) {
+    const [t1, c1] = stops[i];
+    const [t0, c0] = stops[i - 1];
+    if (t <= t1) {
+      const k = (t - t0) / (t1 - t0);
+      return `rgb(${c0.map((v, j) => Math.round(v + (c1[j] - v) * k)).join(",")})`;
+    }
+  }
+  return `rgb(${stops[stops.length - 1][1]})`;
+}
+
+function renderWeek(weather) {
+  const list = $("week");
+  list.replaceChildren();
+  const days = ((weather && weather.daily) || []).filter((d) => d.min !== null && d.max !== null);
+  if (!days.length) {
+    list.append(el("li", { class: "empty-state" }, t("Previsioni non disponibili")));
+    return;
+  }
+  const lo = Math.min(...days.map((d) => d.min));
+  const hi = Math.max(...days.map((d) => d.max));
+  const span = Math.max(hi - lo, 1);
+  const now = weather.current && weather.current.temperature;
+
+  days.forEach((d, i) => {
+    const name = i === 0 ? t("Oggi") : weekdayShortFmt.format(new Date(`${d.date}T12:00:00`)).replace(".", "");
+    const rain = (d.precipitationProbability || 0) >= 20 ? `${d.precipitationProbability}%` : "";
+    const left = ((d.min - lo) / span) * 100;
+    const width = Math.max(((d.max - d.min) / span) * 100, 4);
+    const range = el("div", {
+      class: "week-range",
+      style: `left:${left.toFixed(1)}%;width:${width.toFixed(1)}%;background:linear-gradient(90deg, ${tempColor(d.min)}, ${tempColor(d.max)})`,
+    });
+    const track = el("div", { class: "week-track" }, range);
+    if (i === 0 && typeof now === "number") {
+      const at = Math.min(Math.max(((now - lo) / span) * 100, 0), 100);
+      track.append(el("span", { class: "week-now", style: `left:${at.toFixed(1)}%` }));
+    }
+    list.append(el("li", {},
+      el("span", { class: "week-day" }, name),
+      el("span", { class: "week-icon", html: weatherIcon(d.icon, true) }, el("small", {}, rain)),
+      el("span", { class: "week-min" }, `${round(d.min)}°`),
+      track,
+      el("span", { class: "week-max" }, `${round(d.max)}°`),
+    ));
+  });
+}
+
 function eventWindow(event) {
   if (event.allDay) return null;
   const start = localDate(event.start);
@@ -530,23 +598,74 @@ function eventWindow(event) {
   return start ? { start, end } : null;
 }
 
-function renderAgenda(events, error, now = new Date()) {
+function agendaDayLabel(iso, todayIso) {
+  const when = new Date(`${iso}T12:00:00`);
+  const dateText = dayMonthFmt.format(when).replace(/\./g, "");
+  if (iso === todayIso) return { name: t("Oggi"), date: dateText };
+  const raw = weekdayShortFmt.format(when).replace(/\./g, "");
+  return { name: raw.charAt(0).toUpperCase() + raw.slice(1), date: dateText };
+}
+
+function agendaTimeLabel(event) {
+  if (event.allDay) return t("Tutto il giorno");
+  const span = eventWindow(event);
+  return span ? timeFmt.format(span.start) : t("Tutto il giorno");
+}
+
+function renderAgendaWeek(week, todayIso, error) {
+  const host = $("agenda-week");
+  if (!host) return;
+  host.replaceChildren();
+  if (error || !Array.isArray(week)) {
+    host.hidden = true;
+    return;
+  }
+  host.hidden = false;
+  const days = week.filter((day) => day.events && day.events.length);
+  host.append(el("div", { class: "agenda-week-label" }, t("Agenda della settimana")));
+  if (!days.length) {
+    host.append(el("p", { class: "agenda-week-quiet" }, t("Settimana libera")));
+    return;
+  }
+  const list = el("ol", { class: "agenda-week-list" });
+  days.forEach((day, dayIndex) => {
+    const label = agendaDayLabel(day.date, todayIso);
+    day.events.forEach((event, index) => {
+      list.append(el("li", { class: index === 0 && dayIndex > 0 ? "agenda-day-next" : "" },
+        index === 0
+          ? el("span", { class: "agenda-day-when" },
+            el("span", { class: "agenda-day-name" }, label.name),
+            el("span", { class: "agenda-day-date" }, label.date),
+          )
+          : el("span", { class: "agenda-day-when" }),
+        el("span", { class: "agenda-day-time" }, agendaTimeLabel(event)),
+        el("span", { class: "agenda-day-title" },
+          el("span", { class: "agenda-day-text" }, event.title),
+          event.location ? el("span", { class: "agenda-day-loc" }, event.location) : null),
+      ));
+    });
+  });
+  host.append(list);
+}
+
+function renderAgenda(events, error, now = new Date(), week = null, todayIso = "") {
   const next = $("next-event");
   const timeline = $("timeline");
   next.replaceChildren();
   timeline.replaceChildren();
-  $("events-count").textContent = events.length ? `${events.length} oggi` : "";
+  $("events-count").textContent = events.length ? t("{n} oggi", { n: events.length }) : "";
+  renderAgendaWeek(week, todayIso, error);
 
   if (error) {
     const notConfigured = error.includes("non configurato");
     timeline.append(el("li", { class: "empty-state" },
-      el("span", { class: notConfigured ? "" : "error-text" }, notConfigured ? "Calendario non collegato" : error),
-      notConfigured ? el("small", {}, "Sul PC hub: python -m app.google_auth") : null,
+      el("span", { class: notConfigured ? "" : "error-text" }, notConfigured ? t("Calendario non collegato") : t(error)),
+      notConfigured ? el("small", {}, t("Sul PC hub: python -m app.google_auth")) : null,
     ));
     return;
   }
   if (!events.length) {
-    timeline.append(el("li", { class: "empty-state" }, "Nessun impegno oggi", el("small", {}, "Giornata libera")));
+    timeline.append(el("li", { class: "empty-state" }, t("Nessun impegno oggi"), el("small", {}, t("Giornata libera"))));
     return;
   }
 
@@ -560,8 +679,8 @@ function renderAgenda(events, error, now = new Date()) {
     const isNow = focus === ongoing;
     next.append(
       el("div", { class: "next-label" },
-        isNow ? "In corso" : "Prossimo",
-        el("span", { class: "next-countdown" }, isNow ? `fino alle ${timeFmt.format(w.end)}` : `tra ${formatDuration(w.start - now)}`),
+        isNow ? t("In corso") : t("Prossimo"),
+        el("span", { class: "next-countdown" }, isNow ? t("fino alle {time}", { time: timeFmt.format(w.end) }) : t("Tra {time}", { time: formatDuration(w.start - now) })),
       ),
       el("div", { class: "next-title" }, e.title),
       el("div", { class: "next-meta" }, `${timeFmt.format(w.start)} – ${timeFmt.format(w.end)}${e.location ? ` · ${e.location}` : ""}`),
@@ -569,16 +688,17 @@ function renderAgenda(events, error, now = new Date()) {
   }
 
   for (const { e, w } of timed) {
+    if (focus && e === focus.e) continue;
     let state = "";
     if (w && w.end <= now) state = "past";
     else if (w && w.start <= now) state = "now";
     timeline.append(el("li", { class: state },
       el("div", { class: "tl-time" },
-        w ? timeFmt.format(w.start) : "Giorno",
-        w ? el("small", {}, timeFmt.format(w.end)) : el("small", {}, "intero"),
+        w ? timeFmt.format(w.start) : t("Tutto il giorno"),
+        w ? el("small", {}, timeFmt.format(w.end)) : null,
       ),
       el("div", { class: "tl-body" },
-        el("div", { class: "tl-title" }, e.title, state === "now" ? el("span", { class: "badge" }, "ORA") : null),
+        el("div", { class: "tl-title" }, e.title, state === "now" ? el("span", { class: "badge" }, t("ORA")) : null),
         e.location ? el("div", { class: "tl-sub" }, e.location) : null,
       ),
     ));
@@ -587,36 +707,82 @@ function renderAgenda(events, error, now = new Date()) {
 
 function dueChip(task, todayIso) {
   if (!task.due) return null;
-  if (task.overdue) return el("span", { class: "due overdue" }, `Scaduto · ${shortDateFmt.format(new Date(`${task.due}T12:00:00`))}`);
-  if (task.due === todayIso) return el("span", { class: "due today" }, "Oggi");
+  if (task.overdue) return el("span", { class: "due overdue" }, `${t("Scaduto")} · ${shortDateFmt.format(new Date(`${task.due}T12:00:00`))}`);
+  if (task.due === todayIso) return el("span", { class: "due today" }, t("Oggi"));
   return el("span", { class: "due" }, shortDateFmt.format(new Date(`${task.due}T12:00:00`)));
 }
 
+let editingTask = false;
+
+function startEdit(task, item) {
+  if (editingTask) return;
+  editingTask = true;
+  const title = el("input", { class: "task-edit-title", value: task.title, maxlength: 200, autocomplete: "off" });
+  const due = el("input", { class: "task-edit-due", type: "date", value: task.due || "", title: t("Scadenza") });
+  const finish = (changed) => {
+    editingTask = false;
+    if (changed) refresh();
+    else if (lastData) renderTasks(lastData.tasks, lastData.date);
+  };
+  const save = async () => {
+    const newTitle = title.value.trim();
+    if (!newTitle) { title.focus(); return; }
+    const newDue = due.value || null;
+    if (newTitle === task.title && newDue === (task.due || null)) { finish(false); return; }
+    try {
+      await api(`/api/tasks/${task.id}`, { method: "PATCH", body: JSON.stringify({ title: newTitle, due: newDue }) });
+      finish(true);
+    } catch {
+      finish(false);
+    }
+  };
+  const onKey = (event) => {
+    if (event.key === "Enter") { event.preventDefault(); save(); }
+    else if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finish(false); }
+  };
+  title.addEventListener("keydown", onKey);
+  due.addEventListener("keydown", onKey);
+  item.classList.add("editing");
+  item.replaceChildren(
+    el("button", { class: "check", title: t("Salva"), html: uiIcon("check", 3), onclick: save }),
+    title,
+    due,
+    el("button", { class: "delete", title: t("Annulla"), html: uiIcon("close", 2), onclick: () => finish(false) }),
+  );
+  title.focus();
+  title.select();
+}
+
 function renderTasks(tasks, todayIso) {
+  if (editingTask) return;
   const list = $("tasks");
   list.replaceChildren();
-  const overdue = tasks.filter((t) => t.overdue).length;
-  const dueToday = tasks.filter((t) => t.due === todayIso).length;
-  $("tasks-count").textContent = tasks.length ? `${tasks.length} aperti` : "";
+  const overdue = tasks.filter((x) => x.overdue).length;
+  const dueToday = tasks.filter((x) => x.due === todayIso).length;
+  $("tasks-count").textContent = tasks.length ? t("{n} aperti", { n: tasks.length }) : "";
 
   const stats = $("task-stats");
   stats.replaceChildren(
-    el("div", { class: `task-stat ${overdue ? "warn" : ""}` }, el("strong", {}, String(overdue)), el("span", {}, "Scaduti")),
-    el("div", { class: `task-stat ${dueToday ? "ok" : ""}` }, el("strong", {}, String(dueToday)), el("span", {}, "Oggi")),
-    el("div", { class: "task-stat" }, el("strong", {}, String(tasks.length)), el("span", {}, "Aperti")),
+    el("div", { class: `task-stat ${overdue ? "warn" : ""}` }, el("strong", {}, String(overdue)), el("span", {}, t("Scaduti"))),
+    el("div", { class: `task-stat ${dueToday ? "ok" : ""}` }, el("strong", {}, String(dueToday)), el("span", {}, t("Oggi"))),
+    el("div", { class: "task-stat" }, el("strong", {}, String(tasks.length)), el("span", {}, t("Aperti"))),
   );
 
   if (!tasks.length) {
-    list.append(el("li", { class: "empty-state" }, "Tutto fatto", el("small", {}, "Nessun task aperto")));
+    list.append(el("li", { class: "empty-state" }, t("Tutto fatto"), el("small", {}, t("Nessun task aperto"))));
     return;
   }
   for (const task of tasks) {
     const item = el("li", { class: task.overdue ? "overdue" : "" });
+    const edit = () => startEdit(task, item);
+    const chip = dueChip(task, todayIso);
+    if (chip) { chip.classList.add("editable"); chip.addEventListener("click", edit); }
     item.append(
-      el("button", { class: "check", title: "Completa", html: uiIcon("check", 3), onclick: () => completeTask(task.id, item) }),
-      el("span", { class: "task-title" }, task.title),
-      dueChip(task, todayIso) || el("span"),
-      el("button", { class: "delete", title: "Elimina", html: uiIcon("close", 2), onclick: () => deleteTask(task.id, item) }),
+      el("button", { class: "check", title: t("Completa"), html: uiIcon("check", 3), onclick: () => completeTask(task.id, item) }),
+      el("span", { class: "task-title editable", title: t("Clicca per modificare"), onclick: edit }, task.title),
+      chip || el("span"),
+      el("button", { class: "delete", title: t("Modifica"), html: uiIcon("edit", 2), onclick: edit }),
+      el("button", { class: "delete", title: t("Elimina"), html: uiIcon("close", 2), onclick: () => deleteTask(task.id, item) }),
     );
     list.append(item);
   }
@@ -628,21 +794,24 @@ function renderSummary(data, now = new Date()) {
   const upcoming = timed.filter((w) => w.start > now);
   if (!data.calendarError) {
     if (!data.events.length) {
-      parts.push("Agenda libera oggi.");
+      parts.push(t("Agenda libera oggi."));
     } else if (upcoming.length) {
-      parts.push(`Hai <b>${upcoming.length} ${upcoming.length === 1 ? "impegno" : "impegni"}</b> in arrivo, il prossimo alle <b>${timeFmt.format(upcoming[0].start)}</b>.`);
+      parts.push(t(upcoming.length === 1
+        ? "Hai <b>{n} impegno</b> in arrivo, il prossimo alle <b>{time}</b>."
+        : "Hai <b>{n} impegni</b> in arrivo, il prossimo alle <b>{time}</b>.",
+      { n: upcoming.length, time: timeFmt.format(upcoming[0].start) }));
     } else {
-      parts.push("Impegni di oggi completati.");
+      parts.push(t("Impegni di oggi completati."));
     }
   }
 
-  const overdue = data.tasks.filter((t) => t.overdue).length;
-  const dueToday = data.tasks.filter((t) => t.due === data.date).length;
+  const overdue = data.tasks.filter((x) => x.overdue).length;
+  const dueToday = data.tasks.filter((x) => x.due === data.date).length;
   if (dueToday || overdue) {
     const bits = [];
-    if (dueToday) bits.push(`<b>${dueToday} task</b> in scadenza oggi`);
-    if (overdue) bits.push(`<b>${overdue}</b> ${overdue === 1 ? "scaduto" : "scaduti"}`);
-    parts.push(`${bits.join(" e ")}.`.replace(/^./, (c) => c.toUpperCase()));
+    if (dueToday) bits.push(t("<b>{n} task</b> in scadenza oggi", { n: dueToday }));
+    if (overdue) bits.push(t(overdue === 1 ? "<b>{n}</b> scaduto" : "<b>{n}</b> scaduti", { n: overdue }));
+    parts.push(`${bits.join(t(" e "))}.`.replace(/^./, (c) => c.toUpperCase()));
   }
 
   const weather = data.weather;
@@ -653,14 +822,14 @@ function renderSummary(data, now = new Date()) {
       const later = (weather.hourly || []).slice(1);
       const dry = later.find((h) => (h.precipitationProbability || 0) < 20);
       const moreRain = later.some((h) => (h.precipitationProbability || 0) >= 50);
-      const what = weather.current.icon === "snow" ? "Nevica" : "Sta piovendo";
+      const what = weather.current.icon === "snow" ? t("Nevica") : t("Sta piovendo");
       parts.push(dry && !moreRain
-        ? `${what}, schiarite verso le <b>${dry.time.slice(11, 16)}</b>.`
-        : `${what}: porta l'ombrello.`);
+        ? t("{what}, schiarite verso le <b>{time}</b>.", { what, time: dry.time.slice(11, 16) })
+        : t("{what}: porta l'ombrello.", { what }));
     } else if (rainy) {
-      parts.push(`Pioggia probabile dalle <b>${rainy.time.slice(11, 16)}</b>: porta l'ombrello.`);
+      parts.push(t("Pioggia probabile dalle <b>{time}</b>: porta l'ombrello.", { time: rainy.time.slice(11, 16) }));
     } else if (weather.today && weather.today.max !== null) {
-      parts.push(`Massima di <b>${round(weather.today.max)}°</b>, niente pioggia in vista.`);
+      parts.push(t("Massima di <b>{max}°</b>, niente pioggia in vista.", { max: round(weather.today.max) }));
     }
   }
   $("summary").innerHTML = parts.join(" ");
@@ -670,7 +839,7 @@ function renderAlarm(alarm) {
   const chip = $("alarm-chip");
   if (!alarm || !alarm.nextAlarm) { chip.replaceChildren(); return; }
   const when = new Date(alarm.nextAlarm);
-  chip.replaceChildren(el("span", { html: uiIcon("alarm") }), `Sveglia ${shortDateFmt.format(when)} · ${timeFmt.format(when)}`);
+  chip.replaceChildren(el("span", { html: uiIcon("alarm") }), `${t("Sveglia")} ${shortDateFmt.format(when)} · ${timeFmt.format(when)}`);
 }
 
 function setStatus(ok, text) {
@@ -681,13 +850,122 @@ function setStatus(ok, text) {
 function renderAll(data) {
   applyTheme(data.weather);
   renderWeather(data.weather, data.weatherError);
-  renderAgenda(data.events, data.calendarError);
+  renderAgenda(data.events, data.calendarError, new Date(), data.week, data.date);
   renderTasks(data.tasks, data.date);
   renderAlarm(data.alarm);
   renderSummary(data);
+  renderWeek(data.weather);
+  Morning.maybeShow(data);
 }
 
+/* ------------------------------------------------------------------ morning */
+
+/** A quiet "Buongiorno" card the first time the dashboard is opened or woken in the morning. */
+const Morning = (() => {
+  const SHOWN_KEY = "nexusMorningShown";
+  const VISIBLE_MS = 60 * 1000;
+  const host = $("morning");
+  let armed = true;
+  let timer = null;
+
+  function rows(data, now) {
+    const items = [];
+    if (data.calendarError) {
+      items.push(["calendar", t("Calendario non collegato")]);
+    } else {
+      const timed = data.events.map((e) => ({ e, w: eventWindow(e) })).filter(({ w }) => w && w.end > now);
+      const allDay = data.events.filter((e) => e.allDay);
+      if (timed.length) {
+        const { e, w } = timed[0];
+        const more = timed.length > 1 ? ` · ${t("altri {n}", { n: timed.length - 1 })}` : "";
+        items.push(["calendar", `${timeFmt.format(w.start)}  ${e.title}${more}`]);
+      } else if (allDay.length) {
+        items.push(["calendar", `${t("Tutto il giorno")}  ${allDay[0].title}`]);
+      } else {
+        items.push(["calendar", t("Agenda libera")]);
+      }
+    }
+
+    const overdue = data.tasks.filter((x) => x.overdue).length;
+    const dueToday = data.tasks.filter((x) => x.due === data.date).length;
+    const bits = [];
+    if (dueToday) bits.push(t("{n} in scadenza oggi", { n: dueToday }));
+    if (overdue) bits.push(t(overdue === 1 ? "{n} scaduto" : "{n} scaduti", { n: overdue }));
+    items.push(["tasks", bits.length ? `${t("Task")}: ${bits.join(" · ")}` : t("Nessun task in scadenza")]);
+
+    const weather = data.weather;
+    if (weather) {
+      const rainy = (weather.hourly || []).find((h) => (h.precipitationProbability || 0) >= 50);
+      items.push(["drop", rainy ? t("Pioggia dalle {time}: meglio l'ombrello", { time: rainy.time.slice(11, 16) }) : t("Niente pioggia in vista")]);
+    }
+    return items;
+  }
+
+  function fill(data, now) {
+    $("morning-title").textContent = greetingFor(now);
+    $("morning-date").textContent = dateFmt.format(now);
+    const weather = data.weather;
+    $("morning-icon").innerHTML = weather ? weatherIcon(weather.current.icon, weather.current.isDay) : "";
+    $("morning-temp").textContent = weather ? `${round(weather.current.temperature)}°` : "";
+    $("morning-desc").textContent = weather
+      ? `${t(weather.current.description)} · ${round(weather.today.min)}° / ${round(weather.today.max)}°`
+      : "";
+    $("morning-rows").replaceChildren(...rows(data, now).map(([icon, text]) =>
+      el("li", {}, el("span", { class: "morning-row-icon", html: uiIcon(icon) }), el("span", {}, text))));
+  }
+
+  function show() {
+    host.hidden = false;
+    requestAnimationFrame(() => host.classList.add("open"));
+    clearTimeout(timer);
+    timer = setTimeout(hide, VISIBLE_MS);
+  }
+
+  function hide() {
+    if (host.hidden) return;
+    clearTimeout(timer);
+    host.classList.remove("open");
+    setTimeout(() => { host.hidden = true; }, 450);
+  }
+
+  function maybeShow(data) {
+    if (!armed) return;
+    armed = false;
+    const now = new Date();
+    const hour = now.getHours();
+    if (hour < 5 || hour >= 11 || localStorage.getItem(SHOWN_KEY) === data.date) return;
+    localStorage.setItem(SHOWN_KEY, data.date);
+    fill(data, now);
+    show();
+  }
+
+  host.addEventListener("click", hide);
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") hide(); });
+
+  /** Called when the page is opened again or the PC wakes up, so the card can appear once. */
+  function arm() { armed = true; }
+
+  return { maybeShow, arm };
+})();
+
 /* ------------------------------------------------------------------ actions */
+
+function showSync(lastSync) {
+  $("sync-chip").textContent = lastSync ? t("Sync {time}", { time: timeFmt.format(new Date(lastSync)) }) : t("Nessuna sync");
+}
+
+/** Cheap check every few seconds: reload everything only when the hub says something changed. */
+let lastRevision = null;
+async function pollRevision() {
+  if ($("app").classList.contains("hidden") || document.hidden) return;
+  try {
+    const state = await api("/api/revision");
+    const key = `${state.revision}:${state.marker}`;
+    if (lastRevision !== null && key !== lastRevision) refresh();
+    lastRevision = key;
+    showSync(state.lastSync);
+  } catch { /* the regular refresh reports connection problems */ }
+}
 
 async function refresh() {
   clearTimeout(retryTimer);
@@ -696,11 +974,12 @@ async function refresh() {
     lastData = data;
     failures = 0;
     renderAll(data);
-    setStatus(true, `Aggiornato ${timeFmt.format(new Date())}`);
+    showSync(data.lastSync);
+    setStatus(true, t("Aggiornato {time}", { time: timeFmt.format(new Date()) }));
   } catch (err) {
     failures += 1;
     const wait = Math.min(60000, 3000 * 2 ** (failures - 1));
-    setStatus(false, `Offline · riprovo tra ${Math.round(wait / 1000)} s`);
+    setStatus(false, t("Offline · riprovo tra {s} s", { s: Math.round(wait / 1000) }));
     retryTimer = setTimeout(refresh, wait);
   }
 }
@@ -733,6 +1012,13 @@ function showApp() {
   $("app").classList.remove("hidden");
   refresh();
   Assistant.init();
+  if (!showApp.heartbeat) {
+    showApp.heartbeat = setInterval(() => {
+      api("/api/dashboard/heartbeat", { method: "POST" }).catch(() => {});
+    }, 5000);
+    setInterval(pollRevision, REVISION_MS);
+    api("/api/dashboard/heartbeat", { method: "POST" }).catch(() => {});
+  }
 }
 
 $("login-form").addEventListener("submit", (event) => {
@@ -755,7 +1041,7 @@ $("task-form").addEventListener("submit", async (event) => {
 /* ------------------------------------------------------------------ assistant */
 
 const Assistant = (() => {
-  const SUGGESTIONS = ["Cosa ho in programma oggi?", "Mi serve l'ombrello?", "Che task ho in scadenza?", "Com'è il meteo domani?"];
+  const SUGGESTIONS = ["Cosa ho in programma oggi?", "Mi serve l'ombrello?", "Che task ho in scadenza?", "Com'è il meteo domani?"].map((text) => t(text));
   const panel = $("assistant");
   const log = $("assistant-log");
   const input = $("assistant-input");
@@ -795,7 +1081,7 @@ const Assistant = (() => {
   function greet() {
     log.replaceChildren();
     if (enabled === false) {
-      bubble("bot", "Non sono ancora configurata. Sul PC hub aggiungi GEMINI_API_KEY nel file hub-server\\.env (chiave gratuita da aistudio.google.com) e riavvia il server.", { error: true });
+      bubble("bot", t("Non sono ancora configurata. Sul PC hub aggiungi GEMINI_API_KEY nel file hub-server\\.env (chiave gratuita da aistudio.google.com) e riavvia il server."), { error: true });
     }
     renderSuggestions();
   }
@@ -810,7 +1096,7 @@ const Assistant = (() => {
     }
     $("assistant-name").textContent = name;
     $("assistant-orb-label").textContent = name;
-    input.placeholder = `Chiedi a ${name}...`;
+    input.placeholder = t("Chiedi a {name}...", { name });
     if (!log.children.length || enabled === false) greet();
   }
 
@@ -818,18 +1104,119 @@ const Assistant = (() => {
     panel.inert = false;
     panel.classList.add("open");
     panel.setAttribute("aria-hidden", "false");
-    $("assistant-orb").classList.add("hidden");
+    $("assistant-launcher").classList.add("hidden");
     setTimeout(() => input.focus(), 150);
   }
 
   function close() {
+    Voice.stop();
     panel.inert = true;
     panel.classList.remove("open");
     panel.setAttribute("aria-hidden", "true");
-    $("assistant-orb").classList.remove("hidden");
+    $("assistant-launcher").classList.remove("hidden");
   }
 
-  async function send(text) {
+  const Voice = (() => {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const synth = window.speechSynthesis;
+    const mic = $("assistant-mic");
+    const ERRORS = {
+      "not-allowed": t("Microfono non autorizzato: consenti l'accesso al microfono nel browser."),
+      "service-not-allowed": t("Microfono non autorizzato: consenti l'accesso al microfono nel browser."),
+      "audio-capture": t("Nessun microfono trovato."),
+      "network": t("Riconoscimento vocale non raggiungibile: serve la connessione a internet."),
+      "no-speech": t("Non ho sentito nulla, riprova."),
+    };
+    let recognizer = null;
+
+    function setState(state) {
+      panel.classList.toggle("listening", state === "listening");
+      panel.classList.toggle("speaking", state === "speaking");
+      mic.innerHTML = uiIcon(state === "listening" ? "stop" : "mic", 2);
+      $("assistant-sub").textContent =
+        state === "listening" ? t("Ti ascolto...") : state === "speaking" ? t("Sta parlando...") : t("Assistente personale");
+    }
+
+    function spokenVoice() {
+      const voices = synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith(LANG));
+      return voices.find((v) => /natural|online/i.test(v.name)) || voices[0] || null;
+    }
+
+    function spoken(text) {
+      return text.replace(/^\s*[-•*]\s*/gm, "").replace(/([^.:;!?])\s*\n+/g, "$1. ").replace(/\s*\n+/g, " ");
+    }
+
+    function speak(text) {
+      if (!synth) return;
+      synth.cancel();
+      const utterance = new SpeechSynthesisUtterance(spoken(text));
+      utterance.lang = SPEECH_LANG;
+      const voice = spokenVoice();
+      if (voice) utterance.voice = voice;
+      utterance.onstart = () => setState("speaking");
+      utterance.onend = utterance.onerror = () => setState(null);
+      synth.speak(utterance);
+    }
+
+    function stop() {
+      if (recognizer) recognizer.abort();
+      if (synth) synth.cancel();
+      setState(null);
+    }
+
+    function listen() {
+      if (!Recognition || busy) return;
+      if (recognizer) { recognizer.stop(); return; }
+      if (synth) synth.cancel();
+      const current = new Recognition();
+      recognizer = current;
+      current.lang = SPEECH_LANG;
+      current.interimResults = true;
+      current.maxAlternatives = 1;
+      let heard = "";
+      let failure = null;
+      current.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) heard += result[0].transcript; else interim += result[0].transcript;
+        }
+        input.value = `${heard}${interim}`.trim();
+        autosize();
+      };
+      current.onerror = (event) => { failure = event.error; };
+      current.onend = () => {
+        recognizer = null;
+        setState(null);
+        const text = input.value.trim();
+        if (failure && failure !== "aborted") bubble("bot", ERRORS[failure] || t("Errore del microfono ({failure}).", { failure }), { error: true });
+        else if (!failure && text) send(text, { speak: true });
+      };
+      input.value = "";
+      setState("listening");
+      try {
+        current.start();
+      } catch {
+        recognizer = null;
+        setState(null);
+        bubble("bot", ERRORS["not-allowed"], { error: true });
+      }
+    }
+
+    const orbMic = $("assistant-orb-mic");
+    orbMic.innerHTML = uiIcon("mic", 2);
+    if (Recognition) {
+      mic.classList.remove("hidden");
+      orbMic.classList.remove("hidden");
+      if (synth) synth.getVoices();
+    }
+    mic.addEventListener("click", listen);
+    orbMic.addEventListener("click", () => { open(); listen(); });
+    setState(null);
+    return { available: Boolean(Recognition), listen, speak, stop };
+  })();
+
+  async function send(text, { speak = false } = {}) {
     const message = text.trim();
     if (!message || busy) return;
     busy = true;
@@ -842,13 +1229,14 @@ const Assistant = (() => {
     scrollDown();
     panel.classList.add("busy");
     try {
-      const result = await api("/api/assistant/chat", { method: "POST", body: JSON.stringify({ conversationId, message }) });
+      const result = await api("/api/assistant/chat", { method: "POST", body: JSON.stringify({ conversationId, message, language: LANG }) });
       thinking.remove();
       bubble("bot", result.reply, { actions: result.actions });
+      if (speak) Voice.speak(result.reply);
       if (result.actions.length) refresh();
     } catch (err) {
       thinking.remove();
-      bubble("bot", err.message || "Qualcosa è andato storto.", { error: true });
+      bubble("bot", err.message || t("Qualcosa è andato storto."), { error: true });
     } finally {
       busy = false;
       panel.classList.remove("busy");
@@ -856,7 +1244,85 @@ const Assistant = (() => {
     }
   }
 
+  const SOURCES = { phone: t("Telefono"), sport: "Sport", pc: "PC" };
+  const historyList = $("assistant-history");
+
+  function whenLabel(iso) {
+    const date = new Date(iso);
+    const now = new Date();
+    if (date.toDateString() === now.toDateString()) return timeFmt.format(date);
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) return t("Ieri");
+    return shortDateFmt.format(date);
+  }
+
+  function hideHistory() {
+    panel.classList.remove("history-open");
+    $("assistant-history-btn").classList.remove("active");
+    renderSuggestions();
+  }
+
+  async function showHistory() {
+    if (panel.classList.contains("history-open")) { hideHistory(); return; }
+    Voice.stop();
+    panel.classList.add("history-open");
+    $("assistant-history-btn").classList.add("active");
+    historyList.replaceChildren(el("div", { class: "history-empty" }, t("Carico lo storico...")));
+    try {
+      const items = await api("/api/assistant/history");
+      renderHistory(items);
+    } catch (err) {
+      historyList.replaceChildren(el("div", { class: "history-empty" }, err.message || t("Storico non disponibile.")));
+    }
+  }
+
+  function renderHistory(items) {
+    if (!items.length) {
+      historyList.replaceChildren(el("div", { class: "history-empty" }, t("Nessuna conversazione salvata. Le prossime resteranno qui.")));
+      return;
+    }
+    historyList.replaceChildren(...items.map((item) => {
+      const meta = `${SOURCES[item.source] || "PC"} · ${t("{n} messaggi", { n: item.messages })}`;
+      return el("div", { class: "history-item", role: "listitem" },
+        el("button", { type: "button", class: "history-main", onclick: () => openConversation(item.id) },
+          el("span", { class: "history-title" }, item.title),
+          el("span", { class: "history-meta" }, meta)),
+        el("span", { class: "history-when" }, whenLabel(item.lastAt)),
+        el("button", {
+          type: "button", class: "history-delete", title: t("Elimina conversazione"), html: uiIcon("close", 2),
+          onclick: () => removeConversation(item.id),
+        }));
+    }));
+  }
+
+  async function openConversation(id) {
+    try {
+      const detail = await api(`/api/assistant/history/${encodeURIComponent(id)}`);
+      conversationId = id;
+      log.replaceChildren();
+      for (const message of detail.messages) {
+        bubble(message.role === "user" ? "user" : "bot", message.text, { actions: message.actions });
+      }
+      hideHistory();
+      scrollDown();
+      input.focus();
+    } catch (err) {
+      historyList.prepend(el("div", { class: "history-empty" }, err.message || t("Conversazione non trovata.")));
+    }
+  }
+
+  async function removeConversation(id) {
+    try {
+      await api(`/api/assistant/history/${encodeURIComponent(id)}`, { method: "DELETE" });
+    } catch { /* already gone */ }
+    if (id === conversationId) { conversationId = newId(); greet(); }
+    renderHistory(await api("/api/assistant/history").catch(() => []));
+  }
+
   async function reset() {
+    Voice.stop();
+    hideHistory();
     const old = conversationId;
     conversationId = newId();
     greet();
@@ -875,6 +1341,8 @@ const Assistant = (() => {
   $("assistant-new").addEventListener("click", reset);
   $("assistant-close").innerHTML = uiIcon("close", 2);
   $("assistant-new").innerHTML = uiIcon("restart", 2);
+  $("assistant-history-btn").innerHTML = uiIcon("history", 2);
+  $("assistant-history-btn").addEventListener("click", showHistory);
   panel.querySelector(".send").innerHTML = uiIcon("send", 2);
   $("assistant-form").addEventListener("submit", (event) => { event.preventDefault(); send(input.value); });
   input.addEventListener("input", autosize);
@@ -884,10 +1352,306 @@ const Assistant = (() => {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && panel.classList.contains("open")) close();
     const typing = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName);
-    if (event.key === "/" && !typing && !$("app").classList.contains("hidden")) { event.preventDefault(); open(); }
+    if (typing || $("app").classList.contains("hidden") || !$("settings").hidden) return;
+    if (event.key === "/") { event.preventDefault(); open(); }
+    if (event.key.toLowerCase() === "m" && Voice.available) { event.preventDefault(); open(); Voice.listen(); }
   });
 
   return { init, open, close, send };
+})();
+
+/* ------------------------------------------------------------------ settings */
+
+const Settings = (() => {
+  const PAGES = [
+    { id: "sync", label: "Sync", icon: "sync" },
+    { id: "lilith", label: "Lilith", icon: "spark" },
+    { id: "place", label: "Luogo e meteo", icon: "pin" },
+    { id: "calendar", label: "Calendario", icon: "calendar" },
+    { id: "wake", label: "Promemoria e sveglia", icon: "alarm" },
+    { id: "language", label: "Lingua", icon: "globe" },
+    { id: "info", label: "Info", icon: "info" },
+  ];
+  const REOPEN_KEY = "nexusSettingsPage";
+  const host = $("settings");
+  const menu = $("settings-menu");
+  const body = $("settings-body");
+  const secondsFmt = new Intl.DateTimeFormat(LOCALE, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  let page = "sync";
+  let info = null;
+  let loadError = "";
+  let flash = null;
+  let timer = null;
+
+  function when(iso, withSeconds = false) {
+    if (!iso) return "--";
+    const d = new Date(iso);
+    const time = (withSeconds ? secondsFmt : timeFmt).format(d);
+    return d.toDateString() === new Date().toDateString() ? t("oggi {time}", { time }) : `${shortDateFmt.format(d)} ${time}`;
+  }
+
+  function counts(c) {
+    if (!c || !Object.keys(c).length) return null;
+    const parts = [
+      c.tasks ? t("{n} task", { n: c.tasks }) : null,
+      c.messages ? t("{n} messaggi", { n: c.messages }) : null,
+      c.deletions ? t("{n} chat eliminate", { n: c.deletions }) : null,
+    ].filter(Boolean);
+    return parts.length ? parts.join(", ") : t("niente di nuovo");
+  }
+
+  const group = (title, ...children) => el("div", { class: "set-group" }, title ? el("h3", {}, title) : null, ...children);
+  const row = (label, value, tone) => el("div", { class: "set-row" },
+    el("span", { class: "set-label" }, label),
+    el("span", { class: `set-value${tone ? ` ${tone}` : ""}` }, value));
+  const note = (text) => el("p", { class: "set-note" }, text);
+  const field = (label, attrs) => el("label", { class: "set-field" }, el("span", {}, label), el("input", { autocomplete: "off", ...attrs }));
+  const button = (label, onclick, primary = false) =>
+    el("button", { type: "button", class: primary ? "btn-primary set-btn" : "set-btn", onclick }, label);
+
+  async function load() {
+    try {
+      info = await api("/api/info");
+      loadError = "";
+    } catch (err) {
+      loadError = err.message;
+    }
+    render();
+  }
+
+  async function save(changes) {
+    try {
+      info = await api("/api/settings", { method: "PUT", body: JSON.stringify(changes) });
+      flash = { ok: true, text: t("Salvato") };
+      refresh();
+      Assistant.init();
+    } catch (err) {
+      flash = { ok: false, text: err.status === 422 ? t("Controlla i valori inseriti") : err.message };
+    }
+    render();
+  }
+
+  function renderMenu() {
+    menu.replaceChildren(...PAGES.map((p) => el("button", {
+      type: "button",
+      class: `settings-link${p.id === page ? " active" : ""}`,
+      onclick: () => { page = p.id; flash = null; render(); },
+    }, el("span", { class: "settings-link-icon", html: uiIcon(p.icon) }), t(p.label))));
+  }
+
+  function syncPage() {
+    const log = (info.syncLog || []).slice(0, 10);
+    const last = log[0];
+    const hero = info.lastSync
+      ? el("div", { class: "set-hero ok" }, el("strong", {}, t("Ultima sync riuscita")), el("span", {}, when(info.lastSync)))
+      : el("div", { class: "set-hero warn" }, el("strong", {}, t("Nessuna sync ricevuta")), el("span", {}, t("Il telefono non ha ancora completato una sincronizzazione con questo PC")));
+    const failing = last && !last.ok
+      ? note(t("L'ultimo tentativo ({time}) è fallito: {detail}.", { time: when(last.at, true), detail: t(last.detail) }))
+      : null;
+    const copy = button(t("Copia"), async () => {
+      try { await navigator.clipboard.writeText(info.phoneAddress); flash = { ok: true, text: t("Indirizzo copiato") }; }
+      catch { flash = { ok: false, text: t("Copia non disponibile: scrivilo a mano") }; }
+      render();
+    });
+    const list = log.length
+      ? el("ul", { class: "set-log" }, ...log.map((e) => el("li", { class: e.ok ? "ok" : "warn" },
+          el("span", { class: "set-log-dot" }),
+          el("div", { class: "set-log-main" },
+            el("div", {}, el("strong", {}, e.ok ? t("Riuscita") : t("Errore {status}", { status: e.status })), ` · ${t(e.detail)}`),
+            el("small", {}, [
+              e.client ? t("da {client}", { client: e.client }) : null,
+              counts(e.received) ? t("ricevuti: {what}", { what: counts(e.received) }) : null,
+              counts(e.sent) ? t("inviati: {what}", { what: counts(e.sent) }) : null,
+              e.durationMs ? `${e.durationMs} ms` : null,
+            ].filter(Boolean).join(" · "))),
+          el("span", { class: "set-log-time" }, when(e.at, true)))))
+      : note(t("Nessun tentativo è arrivato a questo PC. Se il telefono dice \"PC non raggiungibile\", controlla che sia sullo stesso Wi‑Fi, che l'indirizzo sia giusto e che il firewall di Windows lasci passare la porta {port}.", { port: info.port }));
+    return [
+      hero,
+      failing,
+      group(t("Collega il telefono"),
+        el("div", { class: "set-row" },
+          el("span", { class: "set-label" }, t("Indirizzo da scrivere nell'app")),
+          el("span", { class: "set-value strong" }, info.phoneAddress), copy),
+        row(t("Token"), t("{hint} (HUB_API_TOKEN nel file .env)", { hint: info.tokenHint })),
+        note(t("Nell'app: Impostazioni → Sync. Se lasci l'indirizzo vuoto il telefono cerca il PC da solo sulla rete di casa."))),
+      group(t("Ultimi tentativi"), list,
+        note(t("Mostro solo gli ultimi 10 scambi con dati: i controlli a vuoto non vengono registrati.")),
+        el("div", { class: "set-actions" }, button(t("Aggiorna"), load))),
+    ];
+  }
+
+  function lilithPage() {
+    const a = info.assistant;
+    const name = field(t("Nome"), { value: a.name, maxlength: 30 });
+    const model = field(t("Modello Gemini"), { value: a.model, maxlength: 60, spellcheck: "false" });
+    return [
+      group(t("Stato"),
+        row(t("Assistente"), a.enabled ? t("Attiva") : t("Non configurata"), a.enabled ? "ok" : "warn"),
+        row(t("Modello"), a.model),
+        a.enabled ? null : note(t("Aggiungi GEMINI_API_KEY nel file hub-server\\.env (chiave gratuita da aistudio.google.com) e riavvia il server. La chiave arriva al telefono con la sync."))),
+      group(t("Nome"),
+        name,
+        note(t("Il nuovo nome arriva anche al telefono alla prossima sync.")),
+        el("div", { class: "set-actions" }, button(t("Salva"), () => save({ assistantName: name.querySelector("input").value }), true))),
+      group(t("Modello"),
+        model,
+        note(t("Il nome del modello Gemini usato da Lilith, per esempio gemini-3.5-flash-lite. Cambia subito sul PC e arriva anche al telefono con la sync. Se il nome non esiste Lilith lo dirà nella chat.")),
+        el("div", { class: "set-actions" }, button(t("Salva"), () => save({ geminiModel: model.querySelector("input").value }), true))),
+    ];
+  }
+
+  function placePage() {
+    const p = info.place;
+    const city = field(t("Città"), { value: p.city, maxlength: 60 });
+    const lat = field(t("Latitudine"), { value: p.latitude, type: "number", step: "0.0001", min: -90, max: 90 });
+    const lon = field(t("Longitudine"), { value: p.longitude, type: "number", step: "0.0001", min: -180, max: 180 });
+    const input = (f) => f.querySelector("input");
+    const find = button(t("Trova coordinate"), async () => {
+      const name = input(city).value.trim();
+      if (!name) return;
+      try {
+        const url = `https://geocoding-api.open-meteo.com/v1/search?count=1&language=${LANG}&name=${encodeURIComponent(name)}`;
+        const hit = (await (await fetch(url)).json()).results?.[0];
+        if (!hit) throw new Error();
+        input(city).value = hit.name;
+        input(lat).value = hit.latitude.toFixed(4);
+        input(lon).value = hit.longitude.toFixed(4);
+        flash = { ok: true, text: t("Trovata: {place}. Premi Salva.", { place: `${hit.name}${hit.admin1 ? `, ${hit.admin1}` : ""}` }) };
+      } catch {
+        flash = { ok: false, text: t("Città non trovata") };
+      }
+      renderFlash();
+    });
+    return [
+      group(t("Luogo del meteo"),
+        city,
+        el("div", { class: "set-pair" }, lat, lon),
+        note(t("Vale per la dashboard, Lilith e, alla prossima sync, anche per il telefono.")),
+        el("div", { class: "set-actions" }, find, button(t("Salva"), () => save({
+          city: input(city).value,
+          latitude: Number(input(lat).value),
+          longitude: Number(input(lon).value),
+        }), true))),
+    ];
+  }
+
+  function calendarPage() {
+    const c = info.calendar;
+    return [
+      group("Google Calendar",
+        row(t("Stato"), c.connected ? t("Collegato") : t("Non collegato"), c.connected ? "ok" : "warn"),
+        c.error ? note(t(c.error)) : null,
+        note(t("Per collegarlo o rifare il login: sul PC hub apri un terminale nella cartella hub-server ed esegui .venv\\Scripts\\python -m app.google_auth, poi riavvia il server."))),
+      group(t("Telefono"), note(t("Il telefono legge il calendario direttamente da Android, anche senza PC: il permesso si gestisce nell'app, Impostazioni → Calendario."))),
+    ];
+  }
+
+  function wakePage() {
+    const alarm = info.alarm;
+    const lead = field(t("Accendi lo schermo prima della sveglia (minuti)"), { value: info.wake.leadMinutes, type: "number", min: 0, max: 120 });
+    return [
+      group(t("Sveglia del telefono"),
+        row(t("Prossima sveglia"), alarm.nextAlarm ? when(alarm.nextAlarm) : t("Nessuna")),
+        row(t("Il PC si sveglia"), alarm.scheduled ? when(alarm.wakeAt) : t("Non programmato")),
+        info.wake.enabled ? null : note(t("Il risveglio automatico è disattivato nel file .env (WAKE_ENABLED)."))),
+      group(t("Anticipo"),
+        lead,
+        el("div", { class: "set-actions" }, button(t("Salva"), () => save({ wakeLeadMinutes: Number(lead.querySelector("input").value) }), true))),
+      group(t("Promemoria"), note(t("I promemoria degli impegni e il riepilogo del mattino arrivano sul telefono: si regolano nell'app, Impostazioni → Promemoria e sveglia."))),
+    ];
+  }
+
+  function languagePage() {
+    const choices = [["auto", t("Automatica (come il dispositivo)")], ["it", "Italiano"], ["en", "English"]];
+    return [
+      group(t("Lingua dell'interfaccia"),
+        el("div", { class: "set-choices" }, ...choices.map(([value, label]) => el("button", {
+          type: "button",
+          class: `set-choice${value === I18n.preference ? " active" : ""}`,
+          onclick: () => {
+            if (value === I18n.preference) return;
+            sessionStorage.setItem(REOPEN_KEY, "language");
+            I18n.setPreference(value);
+          },
+        }, label))),
+        note(t("Vale per questa dashboard e si applica subito. Il telefono ha la sua scelta nell'app, Impostazioni → Lingua."))),
+      group(t("Lilith"),
+        note(t("In inglese Lilith risponde sempre tramite Gemini: le risposte rapide locali, scritte in italiano, restano spente."))),
+    ];
+  }
+
+  function infoPage() {
+    return [
+      el("div", { class: "set-hero" }, el("strong", {}, "NEXUS"), el("span", {}, t("Versione {version}", { version: info.version }))),
+      group(t("Progetto"),
+        note(t("Hub personale: questa dashboard sul PC, l'app e i widget sul telefono, l'assistente Lilith. Tutto resta in casa tra PC e telefono.")),
+        row(t("Versione"), info.version),
+        row(t("Server avviato"), when(info.startedAt)),
+        row(t("Porta"), String(info.port))),
+      group(t("Scorciatoie"),
+        row("/", t("Apri Lilith")),
+        row("M", t("Parla con Lilith")),
+        row("I", t("Impostazioni")),
+        row("Esc", t("Chiudi"))),
+    ];
+  }
+
+  function renderFlash() {
+    body.querySelector(".set-flash")?.remove();
+    if (flash) body.querySelector(".set-title")?.after(el("div", { class: `set-flash ${flash.ok ? "ok" : "warn"}` }, flash.text));
+  }
+
+  function render() {
+    renderMenu();
+    const current = PAGES.find((p) => p.id === page);
+    const head = el("h2", { class: "set-title" }, t(current.label));
+    if (!info) {
+      body.replaceChildren(head, note(loadError ? t("Impostazioni non disponibili: {error}", { error: loadError }) : t("Caricamento...")));
+      return;
+    }
+    const pages = { sync: syncPage, lilith: lilithPage, place: placePage, calendar: calendarPage, wake: wakePage, language: languagePage, info: infoPage };
+    body.replaceChildren(head, ...pages[page]().filter(Boolean));
+    renderFlash();
+  }
+
+  function open(target = "sync") {
+    page = target;
+    flash = null;
+    host.hidden = false;
+    requestAnimationFrame(() => host.classList.add("open"));
+    render();
+    load();
+    clearInterval(timer);
+    timer = setInterval(() => { if (page === "sync") load(); }, 10 * 1000);
+  }
+
+  function close() {
+    clearInterval(timer);
+    host.classList.remove("open");
+    setTimeout(() => { host.hidden = true; }, 250);
+  }
+
+  $("settings-btn").innerHTML = uiIcon("gear");
+  $("settings-btn").addEventListener("click", () => open());
+  $("sync-chip").addEventListener("click", () => open("sync"));
+  $("settings-close").innerHTML = uiIcon("close", 2);
+  $("settings-close").addEventListener("click", close);
+  host.addEventListener("click", (event) => { if (event.target === host) close(); });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !host.hidden) { close(); return; }
+    const typing = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName);
+    if (typing || $("app").classList.contains("hidden") || !host.hidden) return;
+    if (event.key.toLowerCase() === "i") { event.preventDefault(); open(); }
+  });
+
+  const reopen = sessionStorage.getItem(REOPEN_KEY);
+  if (reopen) {
+    sessionStorage.removeItem(REOPEN_KEY);
+    setTimeout(() => open(reopen), 400);
+  }
+
+  return { open, close };
 })();
 
 /* ------------------------------------------------------------------ timers */
@@ -900,17 +1664,24 @@ function tick() {
   const minute = new Date(now).getMinutes();
   if (lastData && minute !== lastMinute) {
     lastMinute = minute;
-    renderAgenda(lastData.events, lastData.calendarError);
+    renderAgenda(lastData.events, lastData.calendarError, new Date(), lastData.week, lastData.date);
     renderSummary(lastData);
     applyTheme(lastData.weather);
   }
-  if (resumed && !$("app").classList.contains("hidden")) refresh();
+  if (resumed && !$("app").classList.contains("hidden")) {
+    Morning.arm();
+    refresh();
+  }
 }
 
 renderClock();
 setInterval(tick, 1000);
 setInterval(() => { if (!$("app").classList.contains("hidden")) refresh(); }, REFRESH_MS);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  Morning.arm();
+  refresh();
+});
 window.addEventListener("online", refresh);
 window.addEventListener("focus", refresh);
 

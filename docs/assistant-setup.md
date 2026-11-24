@@ -17,7 +17,8 @@ In `hub-server\.env` aggiungi:
 
 ```text
 GEMINI_API_KEY=la-tua-chiave
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.5-flash-lite
+GEMINI_THINKING=minimal
 ASSISTANT_NAME=Lilith
 ```
 
@@ -36,6 +37,7 @@ Deve comparire la conferma verde "Task creato" e il task con la scadenza di doma
 
 - Piano gratuito: ci sono limiti di richieste al minuto e al giorno, ampiamente sufficienti per
   uso personale. Se li superi Lilith risponde "Ho raggiunto il limite gratuito di Gemini".
+- Il modello predefinito è `gemini-3.5-flash-lite`, con ragionamento al minimo: è il più veloce del piano gratuito. Se nel `.env` c'è ancora `GEMINI_MODEL=gemini-2.5-flash`, sostituiscilo, altrimenti resta quello lento. Con `GEMINI_THINKING=low` Lilith ragiona un po' di più, utile se smette di usare gli strumenti.
 - Se Google rinomina o ritira il modello, cambia `GEMINI_MODEL` con uno elencato in AI Studio.
 - Privacy: sul piano gratuito Google può usare le richieste per migliorare i suoi modelli. A
   Gemini arrivano solo i dati necessari alla domanda (titoli di eventi e task, meteo).

@@ -29,11 +29,21 @@ class FakeWeather:
 class FakeCalendar:
     def __init__(self):
         self.error: Exception | None = None
+        self.fail_on: date | None = None
+        self.calls = 0
 
     def events_for(self, day: date):
+        self.calls += 1
         if self.error:
             raise self.error
-        return [{"id": "1", "title": "Riunione", "start": f"{day}T10:00:00+01:00", "allDay": False}]
+        if self.fail_on is not None and day == self.fail_on:
+            raise RuntimeError("calendar day failed")
+        events = []
+        if day != date(2026, 11, 13):
+            events.append({"id": "1", "title": "Riunione", "start": f"{day.isoformat()}T10:00:00+01:00", "allDay": False})
+        if day == date(2026, 11, 12):
+            events.append({"id": "2", "title": "Dentista", "start": day.isoformat(), "end": "2026-11-13", "allDay": True})
+        return events
 
 
 class FakeWake:

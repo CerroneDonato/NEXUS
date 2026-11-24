@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from app.calendar_client import CalendarNotConfigured
 
@@ -35,6 +35,7 @@ def test_dashboard_is_served_without_token(client):
 
     assert response.status_code == 200
     assert "<title>NEXUS</title>" in response.text
+    assert 'id="agenda-week"' in response.text
     assert response.headers["Cache-Control"] == "no-cache"
     assert client.get("/static/app.js").status_code == 200
 
@@ -96,6 +97,7 @@ def test_today_aggregates_weather_events_and_tasks(client):
     assert body["events"][0]["title"] == "Riunione"
     assert body["tasks"][0]["title"] == "Palestra"
     assert body["weatherError"] is None and body["calendarError"] is None
+    assert body["phoneAddress"].startswith("http://") and body["phoneAddress"].endswith(":8765")
 
 
 def test_today_weather_is_cached(client, services):
@@ -113,7 +115,43 @@ def test_today_survives_provider_failures(client, services):
 
     assert body["weather"] is None
     assert body["weatherError"] == "Meteo non disponibile"
+    assert body["events"] == []
+    assert body["week"] is None
     assert body["calendarError"] == "Google Calendar non configurato"
+
+
+def test_today_week_covers_the_next_seven_days(client, services):
+    body = client.get("/api/today").json()
+
+    assert [day["date"] for day in body["week"]] == [
+        "2026-11-10",
+        "2026-11-11",
+        "2026-11-12",
+        "2026-11-13",
+        "2026-11-14",
+        "2026-11-15",
+        "2026-11-16",
+    ]
+    assert body["week"][0]["events"] == body["events"]
+    assert body["events"][0]["title"] == "Riunione"
+    assert body["week"][1]["events"][0]["start"].startswith("2026-11-11T10:00")
+    assert body["week"][3]["events"] == []
+    dentista = next(event for event in body["week"][2]["events"] if event["title"] == "Dentista")
+    assert dentista["allDay"] is True
+    assert services.calendar.calls == 7
+
+    client.get("/api/today")
+    assert services.calendar.calls == 7
+
+
+def test_later_day_failure_keeps_today(client, services):
+    services.calendar.fail_on = date(2026, 11, 11)
+
+    body = client.get("/api/today").json()
+
+    assert body["calendarError"] is None
+    assert body["events"][0]["title"] == "Riunione"
+    assert body["week"] is None
 
 
 def test_future_alarm_schedules_wake_with_lead_time(client, services):
@@ -142,3 +180,13 @@ def test_past_alarm_is_not_scheduled(client, services):
 
     assert services.wake.scheduled == []
     assert state["scheduled"] is False
+
+
+def test_alarm_that_already_rang_is_hidden(client, services):
+    client.put("/api/alarm", json={"nextAlarm": "2026-11-11T08:00:00+01:00"})
+    assert client.get("/api/alarm").json()["nextAlarm"].startswith("2026-11-11T08:00")
+
+    services.now.value = datetime.fromisoformat("2026-11-11T08:30:00+01:00")
+
+    assert client.get("/api/alarm").json() == {"nextAlarm": None, "wakeAt": None, "scheduled": False}
+    assert client.get("/api/today").json()["alarm"]["nextAlarm"] is None

@@ -3,6 +3,7 @@ package it.cerrone.dailyhub
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import it.cerrone.dailyhub.widget.HubWidget
 
 /**
  * NEXT_ALARM_CLOCK_CHANGED is exempt from Android's implicit-broadcast limits,
@@ -10,6 +11,7 @@ import android.content.Intent
  */
 class AlarmChangedReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        HubWidget.refresh(context)
         RefreshWorker.schedulePeriodic(context)
         RefreshWorker.refreshNow(context)
     }

@@ -43,6 +43,21 @@ function Stop-HubServer {
         ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 }
 
+function Stop-HubDashboard {
+    # Only the NEXUS kiosk, which has its own Edge profile. The normal browser stays open.
+    $profileDir = Join-Path $ServerDir 'data\edge-kiosk'
+    $pidFile = Join-Path $ServerDir 'data\kiosk.pid'
+    Get-CimInstance Win32_Process -Filter "Name = 'msedge.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -and ($_.CommandLine -like "*$profileDir*" -or $_.CommandLine -like '*edge-kiosk*') } |
+        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    if (Test-Path $pidFile) {
+        $kioskId = 0
+        [void][int]::TryParse((Get-Content $pidFile -ErrorAction SilentlyContinue | Select-Object -First 1), [ref]$kioskId)
+        if ($kioskId -gt 0) { Stop-Process -Id $kioskId -Force -ErrorAction SilentlyContinue }
+        Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Ensure-HubEnv {
     if (Test-Path $EnvFile) { return }
     if (-not (Test-Path $VenvPython)) {
@@ -58,10 +73,10 @@ function Ensure-HubEnv {
 
 function Start-HubServer {
     if (Test-HubListening) { return }
+    # The dashboard starts the server if it is down. Once started it stays up, so the phone can sync with the dashboard closed. An old logon task would start it at every boot.
     $task = Get-ScheduledTask -TaskName $ServerTaskName -ErrorAction SilentlyContinue
-    if ($task) {
-        Start-ScheduledTask -TaskName $ServerTaskName
-        return
+    if ($task -and $task.State -ne 'Disabled') {
+        Disable-ScheduledTask -TaskName $ServerTaskName | Out-Null
     }
     if (-not (Test-Path $VenvPythonW)) {
         throw "Python del virtualenv non trovato. Esegui scripts\windows\install.ps1"

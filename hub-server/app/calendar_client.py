@@ -26,7 +26,19 @@ def load_credentials(token_file: Path):
     creds = Credentials.from_authorized_user_file(str(token_file), SCOPES)
     if not creds.valid:
         if creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            try:
+                creds.refresh(Request())
+            except Exception as exc:
+                # Google says "Token has been expired or revoked" when the Test-mode
+                # grant dies (after 7 days) or the user removes the app.
+                from google.auth.exceptions import RefreshError
+
+                if not isinstance(exc, RefreshError):
+                    raise
+                raise CalendarNotConfigured(
+                    "Il permesso di Google Calendar è scaduto o è stato rimosso. "
+                    "Rifai il login con 'python -m app.google_auth'."
+                ) from exc
             token_file.write_text(creds.to_json(), encoding="utf-8")
         else:
             raise CalendarNotConfigured("Token Google non valido: ripeti 'python -m app.google_auth'")

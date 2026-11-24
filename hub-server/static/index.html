@@ -30,7 +30,9 @@
       <div class="brand"><span class="brand-mark"></span>NEXUS</div>
       <div class="chips">
         <span id="alarm-chip" class="chip"></span>
+        <button id="sync-chip" class="chip chip-button" type="button" title="Dettagli della sync">Nessuna sync</button>
         <span id="status-chip" class="chip chip-status"><span class="dot"></span><span id="status-text">Connessione...</span></span>
+        <button id="settings-btn" class="chip chip-button chip-icon" type="button" title="Impostazioni (tasto I)" aria-label="Impostazioni"></button>
       </div>
     </header>
 
@@ -60,14 +62,22 @@
         </div>
       </section>
 
-      <section class="glass card agenda">
-        <div class="card-head">
-          <h2>Agenda</h2>
-          <span id="events-count" class="pill"></span>
-        </div>
-        <div id="next-event" class="next-event"></div>
-        <ol id="timeline" class="timeline"></ol>
-      </section>
+      <div class="column">
+        <section class="glass card agenda">
+          <div class="card-head">
+            <h2>Agenda</h2>
+            <span id="events-count" class="pill"></span>
+          </div>
+          <div id="next-event" class="next-event"></div>
+          <ol id="timeline" class="timeline"></ol>
+          <div id="agenda-week" class="agenda-week" hidden></div>
+        </section>
+
+        <section class="glass card week">
+          <div class="card-head"><h2>Prossimi giorni</h2></div>
+          <ol id="week" class="week-list"></ol>
+        </section>
+      </div>
 
       <section class="glass card tasks">
         <div class="card-head">
@@ -84,9 +94,39 @@
       </section>
     </div>
 
-    <button id="assistant-orb" class="assistant-orb" type="button" title="Parla con l'assistente (tasto /)">
-      <span class="orb"></span><span id="assistant-orb-label">Lilith</span>
-    </button>
+    <div id="assistant-launcher" class="assistant-launcher">
+      <button id="assistant-orb" class="assistant-orb" type="button" title="Scrivi all'assistente (tasto /)">
+        <span class="orb"></span><span id="assistant-orb-label">Lilith</span>
+      </button>
+      <button id="assistant-orb-mic" class="orb-mic hidden" type="button" title="Parla con l'assistente (tasto M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg></button>
+    </div>
+
+    <div id="morning" class="morning" hidden>
+      <div class="morning-card glass" role="dialog" aria-labelledby="morning-title">
+        <div id="morning-title" class="morning-title">Buongiorno</div>
+        <div id="morning-date" class="morning-date"></div>
+        <div class="morning-weather">
+          <div id="morning-icon" class="morning-icon"></div>
+          <div>
+            <div id="morning-temp" class="morning-temp"></div>
+            <div id="morning-desc" class="morning-desc"></div>
+          </div>
+        </div>
+        <ul id="morning-rows" class="morning-rows"></ul>
+        <div class="morning-hint">Tocca per chiudere</div>
+      </div>
+    </div>
+
+    <div id="settings" class="settings" hidden>
+      <div class="settings-card glass" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <nav class="settings-nav">
+          <div id="settings-title" class="settings-title">Impostazioni</div>
+          <div id="settings-menu" class="settings-menu"></div>
+        </nav>
+        <section id="settings-body" class="settings-body"></section>
+        <button id="settings-close" class="icon-btn settings-close" type="button" title="Chiudi (Esc)"></button>
+      </div>
+    </div>
 
     <aside id="assistant" class="assistant glass" aria-hidden="true" aria-label="Assistente">
       <header class="assistant-head">
@@ -95,19 +135,23 @@
           <div><strong id="assistant-name">Lilith</strong><small id="assistant-sub">Assistente personale</small></div>
         </div>
         <div class="assistant-tools">
+          <button id="assistant-history-btn" class="icon-btn" type="button" title="Storico conversazioni"></button>
           <button id="assistant-new" class="icon-btn" type="button" title="Nuova conversazione"></button>
           <button id="assistant-close" class="icon-btn" type="button" title="Chiudi (Esc)"></button>
         </div>
       </header>
+      <div id="assistant-history" class="assistant-history" role="list"></div>
       <div id="assistant-log" class="assistant-log" aria-live="polite"></div>
       <div id="assistant-suggestions" class="assistant-suggestions"></div>
       <form id="assistant-form" class="assistant-form">
         <textarea id="assistant-input" rows="1" maxlength="2000" placeholder="Chiedi qualcosa..." autocomplete="off"></textarea>
+        <button id="assistant-mic" type="button" class="mic hidden" title="Parla (tasto M)"></button>
         <button type="submit" class="btn-primary send" title="Invia"></button>
       </form>
     </aside>
   </main>
 
+  <script src="/static/i18n.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

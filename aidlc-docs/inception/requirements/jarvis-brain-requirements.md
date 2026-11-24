@@ -6,7 +6,7 @@ agisce sui dati dell'hub (task, calendario, meteo). Si usa da una chat sulla das
 e da una schermata chat nell'app Android.
 
 ## Scelte confermate
-- Motore: Google Gemini (modello Flash) via API REST, piano gratuito. Il PC hub ha 8 GB di RAM,
+- Motore: Google Gemini 3.5 Flash-Lite via API REST, piano gratuito, ragionamento al minimo. Il PC hub ha 8 GB di RAM,
   quindi niente modello locale.
 - Canali: chat sulla dashboard + chat nell'app Android.
 - Tutto gratuito: nessuna libreria a pagamento, chiave API gratuita da Google AI Studio.

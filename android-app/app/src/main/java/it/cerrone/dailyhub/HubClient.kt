@@ -50,6 +50,15 @@ class HubClient(baseUrl: String, private val token: String) {
         call("DELETE", "/api/assistant/chat/$conversationId")
     }
 
+    suspend fun history(): List<ChatSummary> = parseHistory(call("GET", "/api/assistant/history"))
+
+    suspend fun historyMessages(conversationId: String): List<StoredMessage> =
+        parseStoredMessages(call("GET", "/api/assistant/history/$conversationId"))
+
+    suspend fun deleteHistory(conversationId: String) {
+        call("DELETE", "/api/assistant/history/$conversationId")
+    }
+
     private suspend fun call(method: String, path: String, body: JSONObject? = null, client: OkHttpClient = http): String =
         withContext(Dispatchers.IO) {
             val request = Request.Builder()
@@ -60,8 +69,8 @@ class HubClient(baseUrl: String, private val token: String) {
             client.newCall(request).execute().use { response ->
                 val text = response.body?.string().orEmpty()
                 when {
-                    response.code == 401 -> throw HubException("Token non valido")
-                    !response.isSuccessful -> throw HubException(errorDetail(text) ?: "Errore HTTP ${response.code}")
+                    response.code == 401 -> throw HubException(tr("Token non valido", "Invalid token"))
+                    !response.isSuccessful -> throw HubException(errorDetail(text) ?: tr("Errore HTTP ${response.code}", "HTTP error ${response.code}"))
                     else -> text
                 }
             }

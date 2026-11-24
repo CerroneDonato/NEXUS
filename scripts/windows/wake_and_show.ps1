@@ -65,8 +65,9 @@ if ($kiosk) {
     ) | Where-Object { Test-Path $_ } | Select-Object -First 1
     if (-not $edge) { throw 'Microsoft Edge not found' }
 
+    # Kiosk mode shows no permission prompts, so the microphone for Lilith is granted up front.
     $edgeArgs = "--kiosk `"$url`" --edge-kiosk-type=fullscreen --no-first-run --no-default-browser-check " +
-        "--disable-features=msEdgeSidebarV2 --user-data-dir=`"$profileDir`""
+        "--disable-features=msEdgeSidebarV2 --use-fake-ui-for-media-stream --user-data-dir=`"$profileDir`""
     $process = Start-Process -FilePath $edge -ArgumentList $edgeArgs -PassThru
     Set-Content -Path $pidFile -Value $process.Id
 }

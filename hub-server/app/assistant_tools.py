@@ -56,7 +56,7 @@ DECLARATIONS: list[dict[str, Any]] = [
         "description": "Segna un task come completato. Usa prima list_tasks per trovare l'id.",
         "parameters": {
             "type": "object",
-            "properties": {"task_id": {"type": "integer"}},
+            "properties": {"task_id": {"type": "string", "description": "uid restituito da list_tasks"}},
             "required": ["task_id"],
         },
     },
@@ -66,7 +66,7 @@ DECLARATIONS: list[dict[str, Any]] = [
         "parameters": {
             "type": "object",
             "properties": {
-                "task_id": {"type": "integer"},
+                "task_id": {"type": "string", "description": "uid restituito da list_tasks"},
                 "title": {"type": "string"},
                 "due": {"type": "string", "description": "YYYY-MM-DD, oppure stringa vuota per togliere la scadenza"},
             },
@@ -154,7 +154,7 @@ class Toolbox:
             {
                 "tasks": [
                     {
-                        "id": t.id,
+                        "id": t.uid,
                         "title": t.title,
                         "due": t.due.isoformat() if t.due else None,
                         "done": t.done,
@@ -171,15 +171,16 @@ class Toolbox:
         due_iso = task.due.isoformat() if task.due else None
         suffix = f" (entro {due_iso})" if due_iso else ""
         return ToolResult(
-            {"created": {"id": task.id, "title": task.title, "due": due_iso}},
+            {"created": {"id": task.uid, "title": task.title, "due": due_iso}},
             action=f"Task creato: {task.title}{suffix}",
         )
 
     def _complete_task(self, args: dict[str, Any]) -> ToolResult:
-        task = self.tasks.update(int(args["task_id"]), TaskUpdate(done=True))
+        task = self._find(args.get("task_id"))
         if task is None:
             return ToolResult({"error": "Task non trovato"})
-        return ToolResult({"completed": {"id": task.id, "title": task.title}}, action=f"Task completato: {task.title}")
+        task = self.tasks.update(task.id, TaskUpdate(done=True))
+        return ToolResult({"completed": {"id": task.uid, "title": task.title}}, action=f"Task completato: {task.title}")
 
     def _update_task(self, args: dict[str, Any]) -> ToolResult:
         changes: dict[str, Any] = {}
@@ -189,13 +190,23 @@ class Toolbox:
             changes["due"] = _parse_due(args["due"])
         if not changes:
             return ToolResult({"error": "Nessuna modifica indicata"})
-        task = self.tasks.update(int(args["task_id"]), TaskUpdate(**changes))
+        task = self._find(args.get("task_id"))
         if task is None:
             return ToolResult({"error": "Task non trovato"})
+        task = self.tasks.update(task.id, TaskUpdate(**changes))
         return ToolResult(
-            {"updated": {"id": task.id, "title": task.title, "due": task.due.isoformat() if task.due else None}},
+            {"updated": {"id": task.uid, "title": task.title, "due": task.due.isoformat() if task.due else None}},
             action=f"Task modificato: {task.title}",
         )
+
+    def _find(self, task_id: Any):
+        text = str(task_id or "").strip()
+        found = self.tasks.get_by_uid(text)
+        if found is not None:
+            return found
+        if text.isdigit():
+            return self.tasks.get(int(text))
+        return None
 
 
 def _parse_due(value: Any) -> date | None:

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Daily Hub</string>
+    <string name="widget_name">Agenda and tasks</string>
+    <string name="widget_description">Today\'s events and tasks</string>
+    <string name="weather_widget_name">Weather</string>
+    <string name="weather_widget_description">Current weather and the coming days</string>
+    <string name="lilith_widget_name">Lilith and sport</string>
+    <string name="lilith_widget_description">Talk to Lilith or start sport mode</string>
+</resources>

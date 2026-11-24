@@ -16,6 +16,14 @@ def _resolve(path: str) -> Path:
     return candidate if candidate.is_absolute() else SERVER_DIR / candidate
 
 
+def read_version() -> str:
+    """The NEXUS release number, shared by the PC, the dashboard and the phone app."""
+    try:
+        return (REPO_ROOT / "VERSION").read_text(encoding="utf-8").strip() or "sconosciuta"
+    except OSError:
+        return "sconosciuta"
+
+
 def _as_bool(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
@@ -36,7 +44,8 @@ class Settings:
     wake_lead_minutes: int = 2
     wake_enabled: bool = True
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.5-flash-lite"
+    gemini_thinking: str = "minimal"
     assistant_name: str = "Lilith"
 
     @property
@@ -70,6 +79,7 @@ def load_settings() -> Settings:
         wake_lead_minutes=int(os.environ.get("WAKE_LEAD_MINUTES", "2")),
         wake_enabled=_as_bool(os.environ.get("WAKE_ENABLED", "true")),
         gemini_api_key=os.environ.get("GEMINI_API_KEY", "").strip(),
-        gemini_model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip(),
+        gemini_model=os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite").strip(),
+        gemini_thinking=os.environ.get("GEMINI_THINKING", "minimal").strip() or "minimal",
         assistant_name=os.environ.get("ASSISTANT_NAME", "Lilith").strip() or "Lilith",
     )

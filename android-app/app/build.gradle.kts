@@ -4,6 +4,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// One release number for PC and phone: the VERSION file at the repo root, bumped at every release zip.
+val nexusVersion: String = rootProject.file("../VERSION").takeIf { it.isFile }?.readText()?.trim()?.ifEmpty { null } ?: "1.1.0"
+val nexusVersionCode: Int = (nexusVersion.split(".").map { it.toIntOrNull() ?: 0 } + listOf(0, 0, 0))
+    .take(3)
+    .let { (major, minor, patch) -> major * 1_000_000 + minor * 1_000 + patch }
+
 android {
     namespace = "it.cerrone.dailyhub"
     compileSdk = 35
@@ -12,8 +18,10 @@ android {
         applicationId = "it.cerrone.dailyhub"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = nexusVersionCode
+        versionName = nexusVersion
+        // Vosk ships a native library per CPU; phones are ARM, so x86 copies would only grow the APK.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     buildTypes {
@@ -50,6 +58,10 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+
+    // Offline "Lilith" listening for sport mode (free, Apache 2.0). Vosk needs JNA as an AAR.
+    implementation("net.java.dev.jna:jna:5.13.0@aar")
+    implementation("com.alphacephei:vosk-android:0.3.47")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
