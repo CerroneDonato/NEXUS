@@ -139,7 +139,8 @@ try {
             $target = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $entry.FullName))
             New-Item -ItemType Directory -Force -Path (Split-Path $target -Parent) | Out-Null
             [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $target, $true)
-            $written.Add($entry.FullName)
+            # The APK is a build output and git-ignores it on purpose: it lands next to the repo files, never staged.
+            if ($entry.FullName -notlike '*.apk') { $written.Add($entry.FullName) }
         }
         foreach ($path in $toDelete) {
             $target = Join-Path $RepoRoot $path
