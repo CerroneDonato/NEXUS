@@ -197,7 +197,7 @@ class PhoneAssistant(context: Context) {
         """
         [
           {"name":"get_weather","description":"Meteo attuale e previsione fino a 7 giorni.","parameters":{"type":"object","properties":{}}},
-          {"name":"list_events","description":"Eventi del calendario del telefono in un giorno.","parameters":{"type":"object","properties":{"date":{"type":"string"}},"required":["date"]}},
+          {"name":"list_events","description":"Eventi del calendario del PC in un giorno (la settimana disponibile).","parameters":{"type":"object","properties":{"date":{"type":"string"}},"required":["date"]}},
           {"name":"list_tasks","description":"Task personali, con id, titolo, scadenza e stato.","parameters":{"type":"object","properties":{"include_done":{"type":"boolean"}}}},
           {"name":"create_task","description":"Crea un nuovo task personale.","parameters":{"type":"object","properties":{"title":{"type":"string"},"due":{"type":"string"}},"required":["title"]}},
           {"name":"complete_task","description":"Segna un task come completato.","parameters":{"type":"object","properties":{"task_id":{"type":"string"}},"required":["task_id"]}},

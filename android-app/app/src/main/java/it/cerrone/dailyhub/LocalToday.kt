@@ -21,26 +21,36 @@ object LocalToday {
             // Keep showing the last forecast we had instead of an empty card.
             weather = prefs.lastSnapshotJson?.let { runCatching { JSONObject(it).optJSONObject("weather") }.getOrNull() }
         }
-        val (week, calendarError) = PhoneCalendar.week(context, today)
-        val events = (0 until week.length())
-            .map { week.getJSONObject(it) }
-            .firstOrNull { it.optString("date") == today.toString() }
-            ?.optJSONArray("events") ?: JSONArray()
+        val previous = prefs.lastSnapshotJson?.let { runCatching { JSONObject(it) }.getOrNull() }
+        val calendar = calendarPart(prefs, previous, today)
         val tasks = tasksJson(context, today)
         val json = JSONObject()
             .put("date", today.toString())
             .put("weather", weather ?: JSONObject.NULL)
             .put("weatherError", weatherError ?: JSONObject.NULL)
-            .put("events", events)
-            .put("calendarError", calendarError ?: JSONObject.NULL)
+            .put("events", calendar.events)
+            .put("calendarError", calendar.error ?: JSONObject.NULL)
+            .put("calendarNote", calendar.note ?: JSONObject.NULL)
             .put("tasks", tasks)
             .put("alarm", JSONObject().put("nextAlarm", AlarmSync.nextAlarmIso(context) ?: JSONObject.NULL))
-            .put("week", if (calendarError == null) week else JSONObject.NULL)
+            .put("week", calendar.week ?: JSONObject.NULL)
             .toString()
         prefs.lastSnapshotJson = json
         prefs.lastUpdateMillis = System.currentTimeMillis()
         prefs.lastError = null
         json
+    }
+
+    /** The calendar comes from the PC; when the PC does not answer, the last week received is kept. */
+    private suspend fun calendarPart(prefs: Prefs, previous: JSONObject?, today: LocalDate): CalendarPart {
+        if (!prefs.canSync) return HubCalendar.notConnected()
+        return try {
+            HubCalendar.fromHub(JSONObject(HubClient(prefs.hubUrl, prefs.token).today()), today)
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            HubCalendar.fromLastSnapshot(previous, today)
+        }
     }
 
     /**

@@ -3,10 +3,14 @@ type: "Component"
 title: "Sincronizzazione telefono-PC"
 description: "Come telefono e PC si allineano con POST /api/sync: quando, cosa si scambia, chi vince."
 tags: ["sync", "android", "hub"]
-generated: { by: "cursor/claude-opus-5.5", at: "2026-11-25T11:20:00Z" }
+generated: { by: "cursor/claude-opus-5.5", at: "2026-11-25T14:45:00Z" }
 sources:
   - id: sync
     resource: "https://github.com/CerroneDonato/NEXUS/blob/main/hub-server/app/sync.py"
+  - id: hub-today
+    resource: "https://github.com/CerroneDonato/NEXUS/blob/main/hub-server/app/main.py"
+  - id: local-today
+    resource: "https://github.com/CerroneDonato/NEXUS/blob/main/android-app/app/src/main/java/it/cerrone/dailyhub/LocalToday.kt"
   - id: requisiti-sync
     resource: "https://github.com/CerroneDonato/NEXUS/blob/main/aidlc-docs/inception/requirements/standalone-sync-requirements.md"
   - id: worker
@@ -32,6 +36,6 @@ PC e telefono lavorano separati e si allineano sulla stessa rete con `POST /api/
 | Conversazioni cancellate | Restano cancellate. |
 | Chiave Gemini e versione | Solo dal PC al telefono. |
 
-Il calendario non si sincronizza: il PC legge Google Calendar, il telefono i calendari dell'account Google scelto, già presenti sul telefono.[^requisiti-sync]
+Il calendario non passa da questo scambio: il telefono chiede al PC `GET /api/today` e ne prende la settimana degli impegni. Se il PC non risponde, tiene l'ultima settimana ricevuta, da oggi in poi, con un avviso.[^hub-today][^local-today]
 
 `SyncRequest` e `SyncResponse` (`hub-server/app/sync.py`) cambiano insieme a `SyncClient.kt`.[^sync] Esclusi: sync via cloud, sync avviata dal PC, più telefoni.[^requisiti-sync]

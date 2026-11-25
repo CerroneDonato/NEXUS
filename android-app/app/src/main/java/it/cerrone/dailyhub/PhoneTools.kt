@@ -42,9 +42,8 @@ class PhoneTools(private val context: Context) {
 
     private fun events(date: String): ToolOut {
         val day = runCatching { LocalDate.parse(date) }.getOrElse { return ToolOut(JSONObject().put("error", "Data non valida")) }
-        val result = PhoneCalendar.onDay(context, day)
-        if (result.has("error")) return ToolOut(result)
-        return ToolOut(result)
+        val snapshot = prefs.lastSnapshotJson?.let { runCatching { JSONObject(it) }.getOrNull() }
+        return ToolOut(HubCalendar.onDay(snapshot, day))
     }
 
     private fun tasks(includeDone: Boolean): ToolOut {

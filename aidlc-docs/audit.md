@@ -578,10 +578,50 @@ To-do's from the plan have already been created. Do not create them again. Mark 
 
 ---
 
+## Version 1.1.7: Google calendar account choice, widget minimum size, APK in the zip
+**Timestamp**: 2026-11-25T11:30:00Z
+**User Input**: AskQuestion answers: fix "Sì, aggiungila al 1.1.7" for the widget (minResizeWidth 110 to 150 dp); scope "Sì, e nello stesso 1.1.7 anche la modifica per portare l'APK nello zip (consigliato: un solo salto di versione)". Earlier: "Capisci tu cos e che non va, Android 13"
+**AI Response**: "Implemented in 1.1.7. Widget: hub_widget_info.xml minResizeWidth 150 dp (matches the smallest layout of HubWidget), not verified on the phone. Calendar: Prefs.calendarAccount; PhoneCalendar.googleAccounts (Calendars ACCOUNT_NAME/ACCOUNT_TYPE com.google) and events filtered by Instances.CALENDAR_ID of the chosen account; MainActivity asks on first use and keeps asking until a choice (CalendarAccountDialog); SettingsScreen Calendario shows the account and Cambia account. Unit tests: CalendarAccountTest (2), all Android tests 41 passed (build_apk.ps1 BUILD SUCCESSFUL). APK NEXUS-1.1.7.apk versionName 1.1.7 versionCode 1001007. Scripts: build_zip.ps1 adds NEXUS-<version>.apk and stops if missing; applica_modifiche.ps1 extracts *.apk without git add; both parse without errors. Zip NEXUS-modifiche.zip: 43 entries, 0 differing from disk, 0 forbidden, base 64bbc79 (commit NEXUS 1.1.6 on GitHub). Docs: android-setup.md, windows-setup.md (section 6 refusal and APK, line 29 corrected), okf pages and log. Mockup: NEXUS-mockup-app.png replaced (home cropped from the previous image, calendar page and account dialog); PC and widget mockups still valid (no visual change). Hub: the first 1.1.7 apply needs applica_modifiche.ps1 copied from the zip first."
+**Context**: Deployment - account choice, widget fix, APK in zip (1.1.7)
+
+---
+
 ## Widget error on Android 13: likely cause and proposed one-line fix (not applied)
 **Timestamp**: 2026-11-25T10:55:00Z
 **User Input**: "Capisci tu cos e che non va, Android 13"
 **AI Response**: "Most likely cause from the code, not confirmed on the phone: hub_widget_info.xml allows the widget to be resized down to minResizeWidth 110 dp (and minResizeHeight 110 dp), but HubWidget.kt SizeMode.Responsive only defines layouts from 150 dp wide. A size smaller than every defined layout has no matching layout, which can show the system error. Proposed: minResizeWidth 110 to 150 dp in hub_widget_info.xml (one line), then an APK build and a test on the Android 13 phone. No file changed; waiting for confirmation."
 **Context**: Support - widget error diagnosis without logs
+
+---
+
+## Calendar and widget show no content; old deleted event still shown (1.1.7 on phone)
+**Timestamp**: 2026-11-25T13:47:00Z
+**User Input**: "Non vedo i contenuti in nessun formato. Nonostante adesso associo un calendario specifico continuo a vedere un vecchio evento che ormai ho cancellato e non vedo i nuovi."
+**AI Response**: "Read-only review, no code changed. Code facts: the app and the widget read the last snapshot (Prefs.lastSnapshotJson), rebuilt by LocalToday.refresh from PhoneCalendar.week, which reads the Android calendar provider (Instances) filtered by the chosen account. The provider on the phone is updated by Android Google sync, not by NEXUS. A deleted event still shown and new ones missing fits a stale provider for that Google account (Calendar sync off or not run), which NEXUS cannot change. Other causes to rule out: the chosen account has other calendars, or 1.1.7 is not installed. Asked the user to check: Impostazioni Android, Account, Google, Sincronizzazione, Calendar on; the Google Calendar app on the phone (does it show the new events?); the text on the home and in Impostazioni, Calendario; the installed version."
+**Context**: Support - calendar content missing on phone, stale event
+
+---
+
+## Phone calendar settings (OnePlus Nord 2) and proposal to read calendar from the PC
+**Timestamp**: 2026-11-25T14:11:00Z
+**User Input**: "Il mio telefono e un one plus nord 2, devo probabilmente cambiare qualche impostazione di sincronizzazione"
+**AI Response**: "Answered with the four checks on OxygenOS: Google account sync for Calendar, visible calendars in Google Calendar, battery optimization off for NEXUS, forced sync. Asked the user for the results. No file changed."
+**Context**: Support - phone calendar sync settings
+
+---
+
+## Calendar events from the PC instead of the phone: proposal (no code changed)
+**Timestamp**: 2026-11-25T14:20:00Z
+**User Input**: "Proprio non riesco, facciamo che anche gli eventi a calendario li sincronizza da pc"
+**AI Response**: "Read-only check: the hub already serves GET /api/today with week, events and calendarError (same structure as the phone snapshot, see LocalToday comment), authenticated with the token. Proposal for a new version (1.1.8): the phone takes the calendar from the hub when it is reachable; calendar account picker and phone calendar permission become unnecessary; PhoneTools (Lilith) on the phone calendar to decide. Files: LocalToday.kt, MainActivity.kt, SettingsScreen.kt, Prefs.kt, PhoneCalendar.kt, CalendarAccountTest.kt, docs/android-setup.md, OKF pages, mockup app. Hub: no change expected. Verification: unit tests for the hub payload parsing, build_apk.ps1, phone check against the PC dashboard. Waiting for decisions: offline behaviour, Lilith source, permission removal."
+**Context**: Feature proposal - calendar source from hub, awaiting confirmation
+
+---
+
+## Calendar from PC: decisions recorded
+**Timestamp**: 2026-11-25T14:25:00Z
+**User Input**: AskQuestion answers: offline "Gli ultimi eventi salvati, con un avviso"; Lilith "Sì, lo stesso del PC"; permission "Sì, rimuovi entrambi" (calendar permission and account choice).
+**AI Response**: "Decisions recorded for the 1.1.8 proposal: phone shows the last saved events with a warning when the PC does not answer; Lilith reads the calendar from the PC; the phone calendar permission and the account choice are removed. Still no code changed: waiting for the explicit go on the perimeter."
+**Context**: Feature 1.1.8 - calendar from PC, decisions
 
 ---

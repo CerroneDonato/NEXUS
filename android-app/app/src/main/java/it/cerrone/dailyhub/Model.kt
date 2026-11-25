@@ -295,6 +295,8 @@ data class TodaySnapshot(
     val tasks: List<TaskInfo>,
     val nextAlarm: String?,
     val week: List<DayAgenda> = emptyList(),
+    /** Shown when the calendar is the last one received, because the PC did not answer. */
+    val calendarNote: String? = null,
 )
 
 private val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -423,5 +425,6 @@ fun parseToday(json: String): TodaySnapshot {
             if (date == null) null
             else DayAgenda(date, day.optJSONArray("events").mapObjects(::parseEvent))
         }.filterNotNull(),
+        calendarNote = root.str("calendarNote"),
     )
 }

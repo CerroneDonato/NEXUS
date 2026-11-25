@@ -18,9 +18,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\build_apk.ps
 - Oppure via USB, con **Opzioni sviluppatore → Debug USB** attivo: `adb install -r NEXUS-<versione>.apk`.
 - Per aggiornare installa il nuovo APK sopra il vecchio: dati e impostazioni restano.
 
-Al primo avvio l'app chiede l'accesso al calendario e, da Android 13, le notifiche (promemoria e «Buongiorno»). Il microfono lo chiede solo quando usi la voce: chat a voce o modalità sport.
+Al primo avvio l'app chiede, da Android 13, le notifiche (promemoria e «Buongiorno»). Il microfono lo chiede solo quando usi la voce: chat a voce o modalità sport. Il calendario non chiede nessun permesso: gli impegni arrivano dal PC.
 
-Dopo il permesso al calendario l'app chiede quale **account Google** usare: mostra gli impegni dei calendari di quell'account. Finché non scegli non mostra impegni, e la domanda ricompare alla prossima apertura. Per cambiare account: **Impostazioni → Calendario → Cambia account**.
+Gli impegni sono gli stessi calendari Google della dashboard del PC. Non c'è più nessun account da scegliere. Se il PC non risponde, la home mostra gli ultimi impegni ricevuti, con un avviso in alto nella card Agenda. Lilith sul telefono usa la settimana ricevuta dal PC: per le date oltre i 7 giorni non ha il calendario.
 
 ## Collegare il PC
 
@@ -44,7 +44,7 @@ C'è una sola chiamata, `POST /api/sync`, e parte sempre dal telefono: il telefo
 - Con l'app aperta ogni 15 secondi, e circa un secondo dopo una modifica a task o chat.
 - All'apertura dell'app, con **Sincronizza ora** e con il pulsante di sync del widget **Agenda e task**.
 
-Quando imposti, modifichi o elimini una sveglia, Android avvisa l'app (`NEXT_ALARM_CLOCK_CHANGED`), che aggiorna i widget e chiede una sync appena c'è il Wi-Fi: così il PC sa quando riattivarsi. Il calendario invece non si sincronizza: il PC legge Google Calendar con il suo login, il telefono legge i calendari dell'account scelto così come Android li ha sul telefono. Se un impegno non compare, controlla in Impostazioni Android che la sincronizzazione del **Calendario** sia attiva per quell'account, e che il calendario sia spuntato nell'app Google Calendar del telefono.
+Quando imposti, modifichi o elimini una sveglia, Android avvisa l'app (`NEXT_ALARM_CLOCK_CHANGED`), che aggiorna i widget e chiede una sync appena c'è il Wi-Fi: così il PC sa quando riattivarsi. Il calendario passa dal PC: a ogni sincronizzazione il telefono riceve la settimana che il PC legge da Google Calendar. Se un impegno non compare nella home del telefono, controlla prima la dashboard del PC: se manca anche lì, il problema è in Google Calendar o nel login del PC.
 
 ## Batteria e limiti noti
 

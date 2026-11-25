@@ -149,7 +149,7 @@ private fun MenuPage(prefs: Prefs, accent: Color, onOpen: (Page) -> Unit) {
         }
         Page.LILITH -> prefs.assistantName + " · " + prefs.geminiModel + if (prefs.geminiKey.isBlank()) tr(" · manca la chiave", " · key missing") else ""
         Page.PLACE -> prefs.city
-        Page.CALENDAR -> if (hasCalendar(context)) tr("Accesso consentito", "Access granted") else tr("Permesso mancante", "Permission missing")
+        Page.CALENDAR -> if (prefs.canSync) tr("Dal PC", "From the PC") else tr("Da collegare", "To connect")
         Page.REMINDERS -> tr(
             "${prefs.reminderLeadMinutes} min prima · Buongiorno ${if (prefs.morningBriefing) "attivo" else "spento"}",
             "${prefs.reminderLeadMinutes} min before · Good morning ${if (prefs.morningBriefing) "on" else "off"}",
@@ -542,63 +542,20 @@ private fun PlacePage(prefs: Prefs, accent: Color) {
 
 @Composable
 private fun CalendarPage(accent: Color) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val prefs = remember { Prefs(context) }
-    var granted by remember { mutableStateOf(hasCalendar(context)) }
-    var account by remember { mutableStateOf(prefs.calendarAccount) }
-    var choices by remember { mutableStateOf<List<String>?>(null) }
-    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
-    GlassCard {
-        SectionLabel(tr("Calendario del telefono", "Phone calendar"), accent)
-        Spacer(Modifier.height(6.dp))
-        Text(
-            if (granted) tr("Accesso consentito", "Access granted") else tr("Permesso mancante", "Permission missing"),
-            color = if (granted) Nexus.Ok else Nexus.Warn, fontSize = 20.sp, fontWeight = FontWeight.Light,
-        )
-        Text(
-            tr("L'app mostra gli impegni dei calendari del Google account scelto, letti dal telefono, senza passare dal PC.", "The app shows the events of the calendars of the chosen Google account, read from the phone, without going through the PC."),
-            color = Nexus.Text3, fontSize = 12.sp,
-        )
-        Text(
-            tr("Account: ", "Account: ") + account.ifBlank { tr("non scelto", "not chosen") },
-            color = Nexus.Text2, fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp),
-        )
-        Row(Modifier.padding(top = 12.dp)) {
-            if (!granted) {
-                Pill(tr("Consenti accesso", "Allow access"), accent, filled = true) { ask.launch(Manifest.permission.READ_CALENDAR) }
-                Spacer(Modifier.width(8.dp))
-            }
-            if (granted) {
-                Pill(tr("Cambia account", "Change account"), accent) { choices = PhoneCalendar.googleAccounts(context) }
-                Spacer(Modifier.width(8.dp))
-            }
-            Pill(tr("Permessi dell'app", "App permissions"), accent) {
-                context.startActivity(
-                    Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
-            }
-        }
-    }
     GlassCard {
         SectionLabel(tr("Calendario del PC", "PC calendar"), accent)
         Spacer(Modifier.height(6.dp))
         Text(
-            tr("La dashboard usa Google Calendar con un login sul PC: lo stato e le istruzioni sono nella sua pagina Impostazioni → Calendario.", "The dashboard uses Google Calendar with a login on the PC: status and instructions are on its Settings → Calendar page."),
+            tr("Gli impegni arrivano dal PC: sono gli stessi calendari Google della dashboard. Il telefono non legge più il suo calendario e non serve nessun permesso.", "Events come from the PC: they are the same Google calendars as the dashboard. The phone no longer reads its own calendar and needs no permission."),
             color = Nexus.Text2, fontSize = 14.sp,
         )
-    }
-    choices?.let { accounts ->
-        CalendarAccountDialog(
-            accounts,
-            onPick = {
-                prefs.calendarAccount = it
-                account = it
-                choices = null
-                scope.launch { runCatching { LocalToday.refresh(context) }; HubWidget.refresh(context) }
-            },
-            onDismiss = { choices = null },
+        Text(
+            tr("Se il PC non risponde, la home mostra gli ultimi impegni ricevuti, con un avviso.", "If the PC does not answer, the home shows the last events received, with a warning."),
+            color = Nexus.Text3, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp),
+        )
+        Text(
+            tr("La dashboard usa Google Calendar con un login sul PC: lo stato e le istruzioni sono nella sua pagina Impostazioni → Calendario.", "The dashboard uses Google Calendar with a login on the PC: status and instructions are on its Settings → Calendar page."),
+            color = Nexus.Text3, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp),
         )
     }
 }
@@ -824,9 +781,6 @@ private fun whenLabel(iso: String): String {
         at.format(DateTimeFormatter.ofPattern("d/M HH:mm"))
     }
 }
-
-private fun hasCalendar(context: Context): Boolean =
-    ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
 
 private fun appVersion(context: Context): String = try {
     context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?"
