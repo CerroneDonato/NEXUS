@@ -2,6 +2,7 @@
 
 ## 2026-11-25
 
+* **Versione 1.1.9**: widget Agenda con un solo layout (`SizeMode.Exact`) invece di 27 dimensioni fisse: il launcher non riusciva a caricarlo («impossibile mostrare il contenuto»). Da verificare sul telefono.
 * **Versione 1.1.8**: il calendario viene dal PC (`/api/today`), non più dal calendario Android: niente account da scegliere, niente permesso del calendario. Se il PC non risponde, la home mostra l'ultima settimana ricevuta con un avviso. Lilith sul telefono usa la settimana ricevuta (7 giorni). Pagine aggiornate: sincronizzazione, app Android, Google Calendar.
 * **Versione 1.1.7**: account Google del calendario scelto al primo uso (solo sul telefono, finché non scegli il dialogo ricompare); widget con dimensione minima corretta (150 dp); lo zip porta l'APK, che l'hub non committa; guide aggiornate.
 

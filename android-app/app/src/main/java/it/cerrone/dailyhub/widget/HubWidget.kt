@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -71,12 +70,11 @@ private val GAP_H = 4.dp
  * resized. Keeps the original class name so the widget already on the home screen updates in place.
  */
 class HubWidget : GlanceAppWidget() {
-    /** The launcher picks the largest layout that fits, so the content always matches the real size. */
-    override val sizeMode: SizeMode = SizeMode.Responsive(
-        listOf(110.dp, 150.dp, 200.dp, 250.dp, 320.dp, 400.dp, 480.dp, 560.dp, 660.dp)
-            .flatMap { h -> listOf(DpSize(150.dp, h), DpSize(200.dp, h), DpSize(280.dp, h)) }
-            .toSet(),
-    )
+    /**
+     * One layout, drawn at the widget's real size (LocalSize). A list of 27 fixed sizes made the launcher
+     * fail to load the widget ("impossibile mostrare il contenuto"), so there is no list any more.
+     */
+    override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val prefs = Prefs(context)

@@ -625,3 +625,27 @@ To-do's from the plan have already been created. Do not create them again. Mark 
 **Context**: Feature 1.1.8 - calendar from PC, decisions
 
 ---
+
+## Version 1.1.8: calendar from the PC, phone calendar removed
+**Timestamp**: 2026-11-25T14:55:00Z
+**User Input**: "Si"
+**AI Response**: "Implemented the confirmed 1.1.8 perimeter. Phone calendar read from the hub GET /api/today (HubCalendar.kt, LocalToday.kt). When the PC does not answer, the last week received is kept from today on, with calendarNote shown in the home Agenda card. PhoneTools (Lilith and quick answers) read the week kept in the snapshot: 7 days only. Removed PhoneCalendar.kt, CalendarAccountTest.kt, READ_CALENDAR from the manifest, the account picker and the calendar permission in MainActivity and SettingsScreen. Tests: HubCalendarTest 10 new; testDebugUnitTest 49 tests, 0 failures. build_apk.ps1 BUILD SUCCESSFUL (12m 41s), APK NEXUS-1.1.8.apk versionName 1.1.8, versionCode 1001008. Mockup: NEXUS-mockup-app.png regenerated (HTML rendered with Edge): home, Calendario page, home with the stale-data note; PC and widget mockups unchanged. Docs: android-setup.md; OKF pages sincronizzazione, app-android, google-calendar, log. Zip NEXUS-modifiche.zip: base 7abdfe5 (GitHub NEXUS 1.1.7, already applied on the hub), 45 files plus NEXUS-1.1.8.apk, NEXUS-base.txt and NEXUS-cancellati.txt (deletes PhoneCalendar.kt and CalendarAccountTest.kt); 0 entries differing from disk; no secrets, no temp files (a first zip included .mockup-tmp, removed and rebuilt). Not verified on the phone."
+**Context**: Feature 1.1.8 - calendar from the PC, implementation and release
+
+---
+
+## Version 1.1.8: calendar from the PC, phone calendar removed
+**Timestamp**: 2026-11-25T14:55:00Z
+**User Input**: "Si"
+**AI Response**: "Implemented the confirmed 1.1.8 perimeter. Phone calendar read from the hub GET /api/today (HubCalendar.kt, LocalToday.kt). When the PC does not answer, the last week received is kept from today on, with calendarNote shown in the home Agenda card. PhoneTools (Lilith and quick answers) read the week kept in the snapshot: 7 days only. Removed PhoneCalendar.kt, CalendarAccountTest.kt, READ_CALENDAR from the manifest, the account picker and the calendar permission in MainActivity and SettingsScreen. Tests: HubCalendarTest 10 new; testDebugUnitTest 49 tests, 0 failures. build_apk.ps1 BUILD SUCCESSFUL (12m 41s), APK NEXUS-1.1.8.apk versionName 1.1.8, versionCode 1001008. Mockup: NEXUS-mockup-app.png regenerated (HTML rendered with Edge): home, Calendario page, home with the stale-data note; PC and widget mockups unchanged. Docs: android-setup.md; OKF pages sincronizzazione, app-android, google-calendar, log. Zip NEXUS-modifiche.zip: base 7abdfe5 (GitHub NEXUS 1.1.7, already applied on the hub), 45 files plus NEXUS-1.1.8.apk, NEXUS-base.txt and NEXUS-cancellati.txt (deletes PhoneCalendar.kt and CalendarAccountTest.kt); 0 entries differing from disk; no secrets, no temp files (a first zip included .mockup-tmp, removed and rebuilt). Not verified on the phone."
+**Context**: Feature 1.1.8 - calendar from the PC, implementation and release
+
+---
+
+## Agenda widget still shows "impossibile mostrare il contenuto" (diagnosis, no code changed)
+**Timestamp**: 2026-11-25T15:14:00Z
+**User Input**: "Il widget mi continua a dire impossibile mostrare i contenuti"
+**AI Response**: "Read-only review. The 1.1.7 fix (minResizeWidth 150 dp) did not solve it. The Agenda widget (HubWidget.kt) is the only one with SizeMode.Responsive over 27 sizes (9 heights x 3 widths); Weather has 5 and Lilith 3, and they work. Each size generates its own RemoteViews, so the launcher may fail to load the widget. Not verified on the phone: no logcat. Proposal: SizeMode.Exact (one layout, recomposed at the real size) or Responsive with 4 to 6 sizes. Asked the user whether 1.1.8 is installed and which option to take."
+**Context**: Support - agenda widget error persists after 1.1.7
+
+---
