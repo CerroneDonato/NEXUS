@@ -513,3 +513,75 @@ To-do's from the plan have already been created. Do not create them again. Mark 
 **Context**: Deployment - guard for changes made on GitHub, documentation
 
 ---
+
+## Follow-up for the next version: docs/windows-setup.md
+**Timestamp**: 2026-11-24T23:40:00Z
+**User Input**: "Sì, ma nella prossima versione"
+**AI Response**: "Left for the next version: docs/windows-setup.md section 6 does not list the hub refusal for files changed on GitHub after the zip was built, and line 29 says to open http://localhost:8765 right after install.ps1, when the server is not running yet because the dashboard starts it. The 1.1.6 zip and NEXUS-1.1.6.apk stay as delivered; this entry travels with the next zip."
+**Context**: Follow-up - documentation
+
+---
+
+## Hub steps, phone calendar, APK in the zip (questions only, no code change)
+**Timestamp**: 2026-11-25T10:05:00Z
+**User Input**: "Quindi che devo fare sul pc hub?" / "Mi pare che sull app telefono non sia sincronizzato il calendario mentre su app pc si, nonostante l aggiornamento. Poi l'apk che generi tu lo posso gia caricare su telefono senza rifarlo con android studio? Se si mettilo nello zip" / Calendar state: "Accesso consentito con impegni, ma diversi da quelli del PC" / APK route: "Nello zip, ma dalla versione successiva: prima la modifica allo script, poi l'APK nello zip"
+**AI Response**: "Hub steps given: copy NEXUS-modifiche.zip, check applica_modifiche.bat/.ps1 in scripts\windows, drag the zip onto the .bat, read exit codes 0/1/2, install NEXUS-1.1.6.apk on the phone. Calendar: the phone app reads the Android calendars of the phone (PhoneCalendar.kt, READ_CALENDAR), not the Google Calendar read by the hub; the PC shows the calendars checked in Google Calendar (visible_calendars, GOOGLE_CALENDAR_IDS). A different set of events is expected from this design; not changed. APK: installable directly on the phone by sideloading (debug-key signed). Not put in the zip now: *.apk is in .gitignore and git add --dry-run on NEXUS-1.1.6.apk fails with 'ignored by .gitignore' (exit 1), so applica_modifiche.ps1 would stop after extracting; each zip must bump VERSION. Agreed route: a zip with the script change first, the APK in the zip from the next version. No file changed; proposal to follow for confirmation."
+**Context**: Support - hub steps, calendar difference, APK distribution
+
+---
+
+## Phone calendar and app sync failing, PC sync works (diagnosis only)
+**Timestamp**: 2026-11-25T10:11:00Z
+**User Input**: "Non va il calendario su telefono, e poi non sincronizza manco piu bene dall app, mentre se premo syn da pc funziona"
+**AI Response**: "Read-only review of SyncClient.kt, SyncTrigger.kt, PhoneCalendar.kt and the hub /api/sync route (401, 422 and sync log). No file changed. Phone sync failures show as a code in Settings → Sync (no_token, no_pc, unreachable, http_401, http_404, http_422, http_5xx); the hub keeps its own sync log. Asked the user for the message shown in Settings → Sync, the state of Settings → Calendario, and the app and PC server versions before proposing a fix."
+**Context**: Support - sync and calendar diagnosis
+
+---
+
+## Sync and calendar answers from the phone (no code change)
+**Timestamp**: 2026-11-25T10:17:00Z
+**User Input**: Settings → Sync message: "nessun messaggio" / Settings → Calendar: "Impegni presenti, ma diversi da quelli del PC" / Info → Last sync: "La data giusta ma senza aggiornamenti sul calendario, le task si" / Info → PC server: "Stessa versione dell'app (1.1.6)" / Calendar path: "A: allineo a mano i calendari del PC con quelli del telefono (nessun codice)"
+**AI Response**: "Sync works: the last sync date is correct and tasks update; an idle successful sync is not written to the attempts list, so an empty list is expected. The calendar is not synced by NEXUS: the app reads the Android calendar provider, which Android fills from the Google account sync. Path A chosen: the user aligns the phone's Google calendar sync with the PC's calendars. No file changed."
+**Context**: Support - sync works, calendar source mismatch
+
+---
+
+## Ask which Google calendar account on first use (proposal only)
+**Timestamp**: 2026-11-25T10:32:58Z
+**User Input**: "Possiamo fare che la prima volta mi chiede a quale account google calendar mi voglio sincronizzare"
+**AI Response**: "Proposal, no code change yet. The phone app reads all Android calendars (PhoneCalendar.kt, CalendarContract.Instances). A first-use picker would list the Google accounts found in CalendarContract.Calendars (ACCOUNT_TYPE com.google, readable with READ_CALENDAR), store the choice in Prefs and filter the events by that account; a Settings entry would allow changing it. Open question: phone side (filter the app) or PC side (the hub's Google login, which runs on the PC and cannot ask on the phone). Waiting for confirmation of scope, files and tests; the UI change would also need the three mockups and an APK rebuild."
+**Context**: Feature proposal - Google calendar account choice
+
+---
+
+## Account choice, APK in the zip (1.1.7): scope confirmed; widget error reported
+**Timestamp**: 2026-11-25T10:36:00Z
+**User Input**: AskQuestion answers: side "Solo sul telefono: NEXUS mostra gli impegni dell'account scelto (consigliato, prima versione)"; default "Il dialogo compare ogni volta finché non scegli (consigliato)"; scope "Sì, e nello stesso 1.1.7 anche la modifica per portare l'APK nello zip (consigliato: un solo salto di versione)". Then: "Altra cosa, il widget agenda e task mi dice impossibile mostrare il contenuto"
+**AI Response**: "Scope recorded for 1.1.7: account choice on the phone only, prompt until chosen, APK carried in the zip, windows-setup section 6 and line 29 fixed (promised for the next version). No file changed yet for 1.1.7; read-only review of the widget: the message is not in our code, it is the Android fallback when the widget cannot be drawn. Likely causes to check on the phone: an instance placed before the 1.1.6 widget info change (minWidth 250 to 180, targetCellWidth 4 to 3) or the responsive layout with 27 sizes being too large for the launcher. Asked the user to remove and re-add the widget and to say which size fails."
+**Context**: Feature 1.1.7 scope and support - widget error diagnosis
+
+---
+
+## Widget error: answers and log plan (no code change)
+**Timestamp**: 2026-11-25T10:40:00Z
+**User Input**: AskQuestion answers: reinstall "Sì, il messaggio torna" (removing and re-adding the widget did not help); size "Piccolo (circa 3x3 celle)"
+**AI Response**: "Re-adding is not the fix, so an old instance is unlikely. The error shows on the small 3x3 size. adb (platform-tools in %LOCALAPPDATA%\nexus-build) found no connected device. Next: the user connects the phone with USB debugging, reproduces the error, and the AI reads adb logcat to find the real exception before changing any code. No file changed."
+**Context**: Support - widget error, log needed from the phone
+
+---
+
+## Phone cannot be connected from the dev PC (log plan blocked)
+**Timestamp**: 2026-11-25T10:50:00Z
+**User Input**: "Qui non posso collegare il telefono"
+**AI Response**: "adb on the dev PC sees no device (checked twice, 11:47). Options offered: wireless debugging on the same Wi-Fi (the dev PC is on the corporate network, unlikely), a USB log on the home hub PC (needs platform-tools there), a screenshot with phone model and Android version, or a defensive fix in 1.1.7 that can only be checked on the phone. No file changed."
+**Context**: Support - log access for the widget error
+
+---
+
+## Widget error on Android 13: likely cause and proposed one-line fix (not applied)
+**Timestamp**: 2026-11-25T10:55:00Z
+**User Input**: "Capisci tu cos e che non va, Android 13"
+**AI Response**: "Most likely cause from the code, not confirmed on the phone: hub_widget_info.xml allows the widget to be resized down to minResizeWidth 110 dp (and minResizeHeight 110 dp), but HubWidget.kt SizeMode.Responsive only defines layouts from 150 dp wide. A size smaller than every defined layout has no matching layout, which can show the system error. Proposed: minResizeWidth 110 to 150 dp in hub_widget_info.xml (one line), then an APK build and a test on the Android 13 phone. No file changed; waiting for confirmation."
+**Context**: Support - widget error diagnosis without logs
+
+---

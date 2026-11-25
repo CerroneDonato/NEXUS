@@ -3,7 +3,7 @@ type: "Component"
 title: "Script Windows"
 description: "Gli script in scripts/windows: cosa fanno, su quale PC girano, vincoli."
 tags: ["windows", "powershell"]
-generated: { by: "cursor/claude-opus-5.5", at: "2026-11-24T23:30:00Z" }
+generated: { by: "cursor/claude-opus-5.5", at: "2026-11-25T11:20:00Z" }
 sources:
   - id: common
     resource: "https://github.com/CerroneDonato/NEXUS/blob/main/scripts/windows/common.ps1"
@@ -28,7 +28,7 @@ sources:
 | `riavvia_nexus.ps1`, `.bat` | hub | Riavviano server e dashboard. |
 | `update.ps1` | hub | `git pull --ff-only`, dipendenze, riavvio.[^update] |
 | `applica_modifiche.bat`, `.ps1` | hub | Applicano lo zip ([consegna](../procedure/consegna-zip.md)). |
-| `build_zip.ps1` | sviluppo | Crea lo zip; si ferma se GitHub ha modifiche che qui mancano, `-Merged` dopo averle unite a mano.[^build-zip] |
+| `build_zip.ps1` | sviluppo | Crea lo zip con l'APK della versione; si ferma se GitHub ha modifiche che qui mancano, `-Merged` dopo averle unite a mano.[^build-zip] |
 | `build_apk.ps1`, `.bat` | sviluppo | APK e test Android. |
 | `sync_to_hub.ps1` | sviluppo | Vecchio metodo, prima dello zip. |
 

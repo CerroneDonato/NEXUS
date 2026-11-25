@@ -118,6 +118,11 @@ class Prefs(context: Context) {
         get() = prefs.getLong(KEY_REMINDER_LEAD, REMINDER_LEAD_MINUTES)
         set(value) = prefs.edit { putLong(KEY_REMINDER_LEAD, value) }
 
+    /** Google account whose calendars the app shows. Empty until the user picks one. Per device: it is not synced. */
+    var calendarAccount: String
+        get() = prefs.getString(KEY_CALENDAR_ACCOUNT, "") ?: ""
+        set(value) = prefs.edit { putString(KEY_CALENDAR_ACCOUNT, value) }
+
     var morningBriefing: Boolean
         get() = prefs.getBoolean(KEY_MORNING_BRIEFING, true)
         set(value) = prefs.edit { putBoolean(KEY_MORNING_BRIEFING, value) }
@@ -156,5 +161,6 @@ class Prefs(context: Context) {
         const val KEY_PC_VERSION = "pc_version"
         const val KEY_REMINDER_LEAD = "reminder_lead_minutes"
         const val KEY_MORNING_BRIEFING = "morning_briefing"
+        const val KEY_CALENDAR_ACCOUNT = "calendar_account"
     }
 }

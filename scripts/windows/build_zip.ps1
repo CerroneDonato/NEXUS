@@ -1,7 +1,8 @@
 # Builds NEXUS-modifiche.zip in the project folder with every file that differs from the latest version
 # on GitHub. On the hub PC, scripts\windows\applica_modifiche.bat applies it, commits it and pushes it.
 #
-# Besides the files, the zip always carries VERSION and NEXUS-base.txt (the GitHub commit it starts from,
+# Besides the files, the zip always carries VERSION, the APK of this version (NEXUS-<versione>.apk, which the hub
+# keeps out of git) and NEXUS-base.txt (the GitHub commit it starts from,
 # so the hub never applies it on another history), plus NEXUS-cancellati.txt when files were deleted here.
 #
 # GitHub commits that did not come from a zip (another PC, a pull request) have to be on this PC first:
@@ -55,7 +56,11 @@ $gone = Invoke-Git diff --name-only --no-renames '--diff-filter=D' origin/main
 
 $files = @(@($changed) + @($untracked) + "VERSION" | Sort-Object -Unique |
     Where-Object { -not (Test-Skipped $_) -and (Test-Path -LiteralPath (Join-Path $project $_) -PathType Leaf) })
-# A file git lists as deleted but still on disk is only untracked here (e.g. the mockups): the hub keeps it.
+     # The APK of this version is git-ignored, so it is added by name. It must be built first (build_apk.ps1).
+     $apk = "NEXUS-$((Get-Content (Join-Path $project 'VERSION') -Raw).Trim()).apk"
+     if (-not (Test-Path -LiteralPath (Join-Path $project $apk) -PathType Leaf)) { throw "Manca ${apk}: compila prima l'APK con scripts\windows\build_apk.ps1." }
+     $files = @($files) + $apk
+     # A file git lists as deleted but still on disk is only untracked here (e.g. the mockups): the hub keeps it.
 $deleted = @($gone | Where-Object { -not (Test-Skipped $_) -and -not (Test-Path -LiteralPath (Join-Path $project $_)) })
 
 # Every GitHub commit after the base of the last zip that is not "NEXUS <version>" was made somewhere else.

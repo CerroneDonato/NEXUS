@@ -3,7 +3,7 @@ type: "Playbook"
 title: "Consegna con lo zip"
 description: "Dal PC di sviluppo all'hub e a GitHub: build_zip.ps1, Google Drive, applica_modifiche.bat."
 tags: ["consegna", "zip", "github"]
-generated: { by: "cursor/claude-opus-5.5", at: "2026-11-24T23:20:00Z" }
+generated: { by: "cursor/claude-opus-5.5", at: "2026-11-25T11:20:00Z" }
 sources:
   - id: build-zip
     resource: "https://github.com/CerroneDonato/NEXUS/blob/main/scripts/windows/build_zip.ps1"
@@ -22,7 +22,7 @@ Dal PC di sviluppo il push è bloccato: le modifiche viaggiano in uno zip che l'
 1. Alza la patch in `VERSION` ([Versioni](../regole/versioni.md)); se cambia l'interfaccia rifai i [mockup](mockup.md).
 2. Cancella le cartelle temporanee nel repo: lo zip prende anche i file nuovi non ignorati.[^build-zip]
 3. Esegui `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\build_zip.ps1`: crea `NEXUS-modifiche.zip` con i file diversi da GitHub `main`, `VERSION`, `NEXUS-base.txt` (il commit di partenza) e, se serve, `NEXUS-cancellati.txt`.[^build-zip]
-4. Con una versione nuova compila l'[APK](build-apk.md). L'utente porta lo zip sull'hub con Google Drive.[^audit]
+4. Con una versione nuova compila l'[APK](build-apk.md): dalla 1.1.7 lo zip lo porta con sé (`NEXUS-<versione>.apk`), e lo script si ferma se manca. L'utente porta lo zip sull'hub con Google Drive.[^audit]
 
 Gli zip si fanno solo su questo PC: in `.git/nexus-zip-base` lo script ricorda la base dell'ultimo.[^build-zip]
 

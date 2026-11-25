@@ -48,6 +48,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -159,6 +160,7 @@ private fun HubScreen(prefs: Prefs, onOpenChat: (voice: Boolean) -> Unit, onOpen
     }
 
     var editing by remember { mutableStateOf<TaskInfo?>(null) }
+    var accountChoices by remember { mutableStateOf<List<String>?>(null) }
 
     /** Local copy first: the list updates at once, then the PC hears about it a second later. */
     fun afterTaskChange() {
@@ -211,8 +213,17 @@ private fun HubScreen(prefs: Prefs, onOpenChat: (voice: Boolean) -> Unit, onOpen
 
     val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
+    /** Asks which calendar account to show, once the permission is there and no account is picked yet. */
+    fun askCalendarAccount() {
+        if (prefs.calendarAccount.isNotBlank()) return
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) return
+        val accounts = PhoneCalendar.googleAccounts(context)
+        if (accounts.isNotEmpty()) accountChoices = accounts
+    }
+
     val askCalendar = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         reload()
+        askCalendarAccount()
     }
 
     // Changes the PC sent (picked up by the sync below) show up here without a full reload.
@@ -228,6 +239,7 @@ private fun HubScreen(prefs: Prefs, onOpenChat: (voice: Boolean) -> Unit, onOpen
 
     LaunchedEffect(Unit) {
         reload()
+        askCalendarAccount()
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
             askCalendar.launch(Manifest.permission.READ_CALENDAR)
         }
@@ -237,6 +249,14 @@ private fun HubScreen(prefs: Prefs, onOpenChat: (voice: Boolean) -> Unit, onOpen
             prefs.askedNotifications = true
             askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+
+    accountChoices?.let { accounts ->
+        CalendarAccountDialog(
+            accounts,
+            onPick = { prefs.calendarAccount = it; accountChoices = null; reload() },
+            onDismiss = { accountChoices = null },
+        )
     }
 
     SkyBackground(sky) {
@@ -476,6 +496,28 @@ private fun EditTaskDialog(task: TaskInfo, accent: Color, onDismiss: () -> Unit,
 }
 
 /** The activity behind a Compose context, which can be wrapped. */
+/** Asks which Google account's calendars to show. Closing it without a choice asks again the next time. */
+@Composable
+fun CalendarAccountDialog(accounts: List<String>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("Quale calendario Google?", "Which Google calendar?")) },
+        text = {
+            Column {
+                Text(
+                    if (accounts.isEmpty()) tr("Nessun account Google con calendari su questo telefono.", "No Google account with calendars on this phone.")
+                    else tr("Scegli l'account i cui impegni vuoi vedere in NEXUS. Lo cambi dopo in Impostazioni → Calendario.", "Pick the account whose events you want to see in NEXUS. You can change it later in Settings → Calendar."),
+                    color = Nexus.Text2, fontSize = 14.sp,
+                )
+                accounts.forEach { account ->
+                    TextButton(onClick = { onPick(account) }) { Text(account) }
+                }
+            }
+        },
+        confirmButton = {},
+    )
+}
+
 private fun android.content.Context.findActivity(): ComponentActivity? {
     var current: android.content.Context? = this
     while (current is android.content.ContextWrapper) {

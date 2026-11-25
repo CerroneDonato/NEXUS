@@ -3,7 +3,7 @@ type: "Component"
 title: "Sincronizzazione telefono-PC"
 description: "Come telefono e PC si allineano con POST /api/sync: quando, cosa si scambia, chi vince."
 tags: ["sync", "android", "hub"]
-generated: { by: "cursor/claude-opus-5.5", at: "2026-11-24T23:20:00Z" }
+generated: { by: "cursor/claude-opus-5.5", at: "2026-11-25T11:20:00Z" }
 sources:
   - id: sync
     resource: "https://github.com/CerroneDonato/NEXUS/blob/main/hub-server/app/sync.py"
@@ -32,6 +32,6 @@ PC e telefono lavorano separati e si allineano sulla stessa rete con `POST /api/
 | Conversazioni cancellate | Restano cancellate. |
 | Chiave Gemini e versione | Solo dal PC al telefono. |
 
-Il calendario non si sincronizza: il PC legge Google Calendar, il telefono il proprio.[^requisiti-sync]
+Il calendario non si sincronizza: il PC legge Google Calendar, il telefono i calendari dell'account Google scelto, già presenti sul telefono.[^requisiti-sync]
 
 `SyncRequest` e `SyncResponse` (`hub-server/app/sync.py`) cambiano insieme a `SyncClient.kt`.[^sync] Esclusi: sync via cloud, sync avviata dal PC, più telefoni.[^requisiti-sync]

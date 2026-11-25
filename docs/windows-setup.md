@@ -26,7 +26,7 @@ Lo script:
 - rimuove la vecchia attività pianificata **DailyHub Server**, se c'è: il server lo avvia la dashboard e poi resta acceso, così il telefono si sincronizza anche a dashboard chiusa;
 - se lanciato come amministratore apre la porta 8765 nel firewall (solo reti private).
 
-Verifica: apri `http://localhost:8765` e inserisci il token.
+Verifica: apri la dashboard con `scripts\windows\show_dashboard.ps1`, che avvia il server se non è acceso, e inserisci il token.
 
 ## 3. Google Calendar
 
@@ -80,9 +80,9 @@ Dal PC di sviluppo GitHub si legge ma il push viene bloccato dalla rete aziendal
 2. Porta lo zip sull'hub, per esempio con Google Drive.
 3. Sull'hub fai doppio clic su `scripts\windows\applica_modifiche.bat`: prende lo zip più recente in Download, oppure trascina lo zip sul `.bat`. Lo applica al repo, fa il commit `NEXUS <versione>`, il push su GitHub e riavvia NEXUS.
 
-`.env`, `secrets`, `data`, `.venv` e `logs` non vengono mai toccati. Lo script non applica niente se sull'hub ci sono modifiche locali ai file del repo, se lo zip è più vecchio della versione installata o se parte da una versione di GitHub che l'hub non ha. Se il push non riesce l'aggiornamento resta attivo: rilanciando lo script il push viene ritentato.
+`.env`, `secrets`, `data`, `.venv` e `logs` non vengono mai toccati. Lo script non applica niente se sull'hub ci sono modifiche locali ai file del repo, se lo zip è più vecchio della versione installata, se parte da una versione di GitHub che l'hub non ha, o se dopo lo zip un commit fatto altrove su GitHub ha cambiato un file che lo zip riporterebbe indietro (in quel caso rifai lo zip sul PC di sviluppo). Dalla 1.1.7 lo zip porta anche l'APK del telefono (`NEXUS-<versione>.apk`): lo script lo mette nella cartella del progetto senza committarlo, e lo installi sul telefono. Se il push non riesce l'aggiornamento resta attivo: rilanciando lo script il push viene ritentato.
 
-La prima volta lo script non è ancora sull'hub: copia `applica_modifiche.ps1` e `applica_modifiche.bat` dallo zip in `scripts\windows`, poi fai doppio clic.
+La prima volta lo script non è ancora sull'hub: copia `applica_modifiche.ps1` e `applica_modifiche.bat` dallo zip in `scripts\windows`, poi fai doppio clic. Con la 1.1.7 copia `applica_modifiche.ps1` dallo zip prima di applicarlo: la versione precedente non sa gestire l'APK.
 
 ## 7. Aggiornamenti con git, quando il push funziona
 

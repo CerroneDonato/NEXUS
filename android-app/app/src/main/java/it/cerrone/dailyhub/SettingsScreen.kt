@@ -543,7 +543,11 @@ private fun PlacePage(prefs: Prefs, accent: Color) {
 @Composable
 private fun CalendarPage(accent: Color) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val prefs = remember { Prefs(context) }
     var granted by remember { mutableStateOf(hasCalendar(context)) }
+    var account by remember { mutableStateOf(prefs.calendarAccount) }
+    var choices by remember { mutableStateOf<List<String>?>(null) }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
     GlassCard {
         SectionLabel(tr("Calendario del telefono", "Phone calendar"), accent)
@@ -553,12 +557,20 @@ private fun CalendarPage(accent: Color) {
             color = if (granted) Nexus.Ok else Nexus.Warn, fontSize = 20.sp, fontWeight = FontWeight.Light,
         )
         Text(
-            tr("L'app legge gli impegni dai calendari di Android (anche Google) senza passare dal PC.", "The app reads events from the Android calendars (Google too) without going through the PC."),
+            tr("L'app mostra gli impegni dei calendari del Google account scelto, letti dal telefono, senza passare dal PC.", "The app shows the events of the calendars of the chosen Google account, read from the phone, without going through the PC."),
             color = Nexus.Text3, fontSize = 12.sp,
+        )
+        Text(
+            tr("Account: ", "Account: ") + account.ifBlank { tr("non scelto", "not chosen") },
+            color = Nexus.Text2, fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp),
         )
         Row(Modifier.padding(top = 12.dp)) {
             if (!granted) {
                 Pill(tr("Consenti accesso", "Allow access"), accent, filled = true) { ask.launch(Manifest.permission.READ_CALENDAR) }
+                Spacer(Modifier.width(8.dp))
+            }
+            if (granted) {
+                Pill(tr("Cambia account", "Change account"), accent) { choices = PhoneCalendar.googleAccounts(context) }
                 Spacer(Modifier.width(8.dp))
             }
             Pill(tr("Permessi dell'app", "App permissions"), accent) {
@@ -575,6 +587,18 @@ private fun CalendarPage(accent: Color) {
         Text(
             tr("La dashboard usa Google Calendar con un login sul PC: lo stato e le istruzioni sono nella sua pagina Impostazioni → Calendario.", "The dashboard uses Google Calendar with a login on the PC: status and instructions are on its Settings → Calendar page."),
             color = Nexus.Text2, fontSize = 14.sp,
+        )
+    }
+    choices?.let { accounts ->
+        CalendarAccountDialog(
+            accounts,
+            onPick = {
+                prefs.calendarAccount = it
+                account = it
+                choices = null
+                scope.launch { runCatching { LocalToday.refresh(context) }; HubWidget.refresh(context) }
+            },
+            onDismiss = { choices = null },
         )
     }
 }
