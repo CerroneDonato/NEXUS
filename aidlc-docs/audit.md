@@ -465,3 +465,51 @@ To-do's from the plan have already been created. Do not create them again. Mark 
 **Context**: Construction - feature batch
 
 ---
+
+## Agenda widget 7 days, widget sync, APK build script
+**Timestamp**: 2026-11-20T17:35:00Z
+**User Input**: "Sistema il widget agenda in maniera piu funzionale, non serve la data di oggi in grande, servono solo le cose in agenda da oggi a 7 giorni e le task. C'e poco spazio quindi pensa a qualcosa che stia in un 3x3 in maniera chiara (ma che si puo anche allargare o restringere). Poi il pulsante di sync deve sincronizzare come il sync dell app, e tra il widget e l'app. Il sistema di building APK lo puoi salvare in maniera tale ce lo hai pronto per le altre volte?"
+**AI Response**: "Agenda widget redesigned for a 3x3 default (resizable from about 2x2): compact header with section name, hidden-count and a sync chip showing the last sync time; one line per event from today to +6 days (day label only on the first event of each day, time, title, ongoing event highlighted; finished events of today dropped); task section below; events and tasks share the available lines. The sync chip now runs the same PC exchange as the app, then rereads calendar and weather, reschedules reminders, redraws every widget and reloads the open app. Every sync (app, widget, background) now redraws the widgets when something changed. Saved scripts/windows/build_apk.ps1 (+ .bat): sets up the portable toolchain in %LOCALAPPDATA%\nexus-build if missing, runs unit tests and the release build, writes NEXUS-<VERSION>.apk. Version 1.1.4."
+**Context**: Construction - widget and tooling
+
+---
+
+## GitHub push via browser login
+**Timestamp**: 2026-11-24T20:24:00Z
+**User Input**: "Stavo pensando, dato che non possiamo usare direttamente il sistema di versioning di github perche bloccato da zscaler, riusciamo a sfruttare il fatto che l'ho aperto nel browser per pushare nuove modifiche?" / "Prego"
+**AI Response**: "Remote reads work; GitHub main is e9f39dd (Version 1.1.3), not in local history. Re-login with Git Credential Manager (account CerroneDonato, --force): the dry-run was accepted, but the real push of branch nexus-1.1.4 was refused with HTTP 403 even after re-login, so the network policy blocks pushes, not the credentials. Local commit on branch nexus-1.1.4 (105 files, no secrets; zip and root PNG mockups excluded). main untouched. Next options: browser upload to a new branch, or ask IT to allow git push from this PC."
+**Context**: Deployment
+
+---
+
+## Alternatives to git push from this PC
+**Timestamp**: 2026-11-24T21:26:00Z
+**User Input**: "Possibile che non ci siano altri sistemi di versioning gratuiti per cui io sviluppo su questo pc e eseguo su un altro bypassando zscaler?" / "Non mi piace, a questo punto meglio lo zip. Ma non ti vengono in mente modi alternativi?"
+**AI Response**: "Checked: Tailscale not installed here; SSH port 22 closed; SSH over port 443 reset by Zscaler during the handshake; HTTPS push 403. Every git write from this PC is blocked, reads work. Created a git bundle; the user prefers the zip, bundle deleted. Proposed: keep the zip and let the hub PC (no Zscaler) apply it, commit with the VERSION number and push to GitHub, while this PC stays aligned through git fetch; alternative: a Cursor Cloud Agent that pushes from the cloud. Declined GitHub API upload, tunnels and other hosts as routes around the same block."
+**Context**: Deployment
+
+---
+
+## Hub applies the zip, commits and pushes
+**Timestamp**: 2026-11-24T21:27:00Z
+**User Input**: "Zip + script sull'hub che applica, committa e pusha su GitHub (consigliato)" / "Confermo così"
+**AI Response**: "New scripts\windows\build_zip.ps1 builds NEXUS-modifiche.zip from every file that differs from GitHub main, plus VERSION, NEXUS-base.txt (the GitHub commit it starts from) and NEXUS-cancellati.txt (files deleted here). New scripts\windows\applica_modifiche.ps1 and .bat for the hub: take the newest zip in Downloads or the one dropped on the .bat; change nothing when tracked files have local changes, the hub lacks the base commit, VERSION is older, or the zip holds hub state (.env, secrets, data, .venv, logs, .git) or unsafe paths; otherwise extract, delete, stage only the zip's files, commit 'NEXUS <version>', push and restart NEXUS. If the push fails the commit stays and the next run retries it (exit 2). The .bat keeps command, pause and exit on one line because the zip can replace it while cmd reads it. docs/windows-setup.md section 6 rewritten. VERSION 1.1.5, NEXUS-1.1.5.apk built. Tested on a fake GitHub and a fake hub inside the workspace, deleted afterwards: 70 of 70 checks passed. The restart can only be verified on the real hub. Nothing committed or pushed from this PC."
+**Context**: Deployment
+
+---
+
+## OKF knowledge bundle for AI tools
+**Timestamp**: 2026-11-24T22:30:00Z
+**User Input**: "Crea una struttura con OKF pushabile cosi se faccio fare altre modifiche in futuro a te o altri tool AI faccio prima" / Scope: "Confermo così (consigliato)" / Version: "Rifai lo zip 1.1.5 con dentro anche OKF e uso quello al posto del precedente; l'APK 1.1.5 resta valido (consigliato)" / Language: "Italiano, come docs/ (consigliato)"
+**AI Response**: "Added AGENTS.md (read by Cursor, Codex and GitHub Copilot), CLAUDE.md and GEMINI.md (one line: @AGENTS.md), and okf/, an OKF 0.3 bundle in Italian: project overview, 6 components, 4 external systems, 4 rules, 4 procedures, indexes and log (25 files, 19 concepts, each with sources and generated, none verified). The official OKF validator with --strict reports 0 errors, 0 warnings, 0 info. Extra checks found no missing field, uncited source, broken link, missing path or secret, and caught every error planted in a test copy. Page text is 3,850 words (5,186 with frontmatter). Documented, not fixed: a zip built while GitHub has changes made elsewhere would overwrite them on the hub; the install.ps1 header still says the server stops with the dashboard. VERSION stays 1.1.5 and NEXUS-modifiche.zip is rebuilt with the bundle. No code, mockup or APK change. Nothing committed or pushed from this PC."
+**Context**: Documentation - OKF bundle for AI tools
+
+---
+
+## Guard against undoing GitHub changes, docs refresh, shorter OKF bundle (1.1.6)
+**Timestamp**: 2026-11-24T23:28:00Z
+**User Input**: "Fai bloccare a build_zip.ps1 lo zip quando GitHub ha modifiche che qui mancano (consigliato)" / "Aggiorna README, docs/android-setup.md e l'intestazione di install.ps1" / "Accorcia il bundle sotto le 4.000 parole contando anche le intestazioni" / Hub check: "Sì, su entrambi i PC (consigliato)" / Spec: "Confermo così (consigliato)"
+**AI Response**: "scripts\windows\build_zip.ps1 remembers the GitHub base of the last zip in .git\nexus-zip-base and does not build the zip when a later GitHub commit not named 'NEXUS <version>' changed a file that differs on this PC; it lists the files (fix: git checkout origin/main -- <file>, or merge by hand and rerun with -Merged). scripts\windows\applica_modifiche.ps1 refuses a zip, before changing anything, when such a commit made after the zip changed a file the zip would overwrite or delete. Test on a fake GitHub, development PC, hub and second PC: 28/28 checks passed. README.md rewritten (zip flow, build_apk.ps1, new diagram, pointers to AGENTS.md and okf/, API table replaced by /docs), docs/android-setup.md rewritten for the current app, two lines of docs/windows-setup.md and three texts of install.ps1 fixed (the dashboard starts the server, which then stays up). okf/ shortened to 3,731 words including front matter (3,969 with AGENTS.md, CLAUDE.md and GEMINI.md); validator --strict 0 errors, 0 warnings, 0 info (not rerun after the last two one-line edits, which mention -Merged on the GitHub and script pages); custom checks 0 problems. VERSION 1.1.6; server tests 90 passed; NEXUS-1.1.6.apk built (Android unit tests up to date); zip rebuilt. Nothing committed or pushed from this PC."
+**Context**: Deployment - guard for changes made on GitHub, documentation
+
+---

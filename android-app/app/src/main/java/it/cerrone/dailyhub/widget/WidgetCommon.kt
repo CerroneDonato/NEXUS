@@ -9,8 +9,8 @@ import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.updateAll
 import androidx.glance.unit.ColorProvider
 import it.cerrone.dailyhub.R
-import it.cerrone.dailyhub.RefreshWorker
 import it.cerrone.dailyhub.Sky
+import it.cerrone.dailyhub.SyncTrigger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -38,9 +38,10 @@ object NexusWidgets {
     }
 }
 
+/** The widget sync button: the same exchange as "Sincronizza ora" in the app, then calendar, weather and widgets. */
 class RefreshAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        RefreshWorker.refreshNow(context)
+        SyncTrigger.manual(context)
     }
 }
 

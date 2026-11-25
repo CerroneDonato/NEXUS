@@ -6,7 +6,7 @@ Tutto gratuito: servono solo Python, git ed Edge (già presente in Windows).
 
 1. Installa [Python 3.12+](https://www.python.org/downloads/windows/) (spunta "Add python.exe to PATH").
 2. Installa [Git for Windows](https://git-scm.com/download/win).
-3. Clona il repo (vedi README, sezione "Repo remoto"):
+3. Clona il repo (vedi README, sezione "Repo su GitHub"):
 
 ```powershell
 cd $HOME
@@ -23,7 +23,7 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\install.ps1
 Lo script:
 - crea `hub-server\.venv` e installa le dipendenze;
 - crea `hub-server\.env` con un token casuale e lo stampa a video (ti serve per l'app Android);
-- registra l'attività pianificata **DailyHub Server**, che avvia il server a ogni accesso;
+- rimuove la vecchia attività pianificata **DailyHub Server**, se c'è: il server lo avvia la dashboard e poi resta acceso, così il telefono si sincronizza anche a dashboard chiusa;
 - se lanciato come amministratore apre la porta 8765 nel firewall (solo reti private).
 
 Verifica: apri `http://localhost:8765` e inserisci il token.
@@ -74,7 +74,15 @@ Poi Start -> Sospendi (non Arresta il sistema). Allo scadere dei 3 minuti il PC 
 
 ## 6. Aggiornamenti dal PC di sviluppo
 
-Se `git push` da questo PC risponde HTTP 403, le credenziali salvate non sono l'account `CerroneDonato`. In alternativa copia sul PC dell'hub lo zip preparato sul Desktop (`ADayInALife-NEXUS.zip`, senza `.venv` e senza `.env`) e sostituisci la cartella del repo tenendo `hub-server\.env` e `hub-server\.venv`.
+Dal PC di sviluppo GitHub si legge ma il push viene bloccato dalla rete aziendale. Per questo le modifiche arrivano sull'hub come zip, e i commit su GitHub li fa l'hub.
+
+1. Sul PC di sviluppo `scripts\windows\build_zip.ps1` crea `NEXUS-modifiche.zip` nella cartella del progetto, con i soli file cambiati rispetto all'ultima versione su GitHub.
+2. Porta lo zip sull'hub, per esempio con Google Drive.
+3. Sull'hub fai doppio clic su `scripts\windows\applica_modifiche.bat`: prende lo zip più recente in Download, oppure trascina lo zip sul `.bat`. Lo applica al repo, fa il commit `NEXUS <versione>`, il push su GitHub e riavvia NEXUS.
+
+`.env`, `secrets`, `data`, `.venv` e `logs` non vengono mai toccati. Lo script non applica niente se sull'hub ci sono modifiche locali ai file del repo, se lo zip è più vecchio della versione installata o se parte da una versione di GitHub che l'hub non ha. Se il push non riesce l'aggiornamento resta attivo: rilanciando lo script il push viene ritentato.
+
+La prima volta lo script non è ancora sull'hub: copia `applica_modifiche.ps1` e `applica_modifiche.bat` dallo zip in `scripts\windows`, poi fai doppio clic.
 
 ## 7. Aggiornamenti con git, quando il push funziona
 

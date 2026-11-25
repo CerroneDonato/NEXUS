@@ -1,6 +1,7 @@
 package it.cerrone.dailyhub
 
 import android.content.Context
+import it.cerrone.dailyhub.widget.NexusWidgets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -161,6 +162,14 @@ class SyncClient(private val context: Context) {
             lastFinished = System.currentTimeMillis()
             val changed = outcome.received?.isEmpty() == false
             if (changed) SyncSignal.applied.update { it + 1 }
+            // Whoever synced (app, widget, background), the widgets show the same tasks and sync time as the app.
+            if (changed || (outcome.ok && lastFinished - lastWidgetUpdate > WIDGET_REFRESH_MS)) {
+                lastWidgetUpdate = lastFinished
+                runCatching {
+                    if (changed) LocalToday.refreshTasks(context)
+                    NexusWidgets.updateAll(context)
+                }
+            }
             SyncResult(outcome.ok, changed, syncMessage(outcome.code, outcome.httpCode))
         }
     }
@@ -371,6 +380,10 @@ class SyncClient(private val context: Context) {
         @Volatile
         var lastFinished: Long = 0L
             private set
+
+        /** Idle syncs redraw the widgets at most once a minute, just to keep the shown sync time current. */
+        private const val WIDGET_REFRESH_MS = 60_000L
+        private var lastWidgetUpdate: Long = 0L
 
         private val http = OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)

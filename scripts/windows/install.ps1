@@ -3,7 +3,7 @@
     One-time setup on the hub PC (no admin rights needed).
     - creates the Python virtualenv and installs dependencies
     - creates hub-server\.env with a random token if missing
-    - removes the old logon task: the server now starts and stops with the dashboard
+    - removes the old logon task: the dashboard starts the server, which then stays up so the phone can sync
     - opens the Windows Firewall port (only if run as administrator)
 #>
 . (Join-Path $PSScriptRoot 'common.ps1')
@@ -30,7 +30,7 @@ if (-not (Test-Path $EnvFile)) {
 $task = Get-ScheduledTask -TaskName $ServerTaskName -ErrorAction SilentlyContinue
 if ($task) {
     Unregister-ScheduledTask -TaskName $ServerTaskName -Confirm:$false
-    Write-Host "Removed scheduled task '$ServerTaskName'. The server starts when you open the dashboard and stops when you close it."
+    Write-Host "Removed scheduled task '$ServerTaskName'. The dashboard starts the server, which then stays up so the phone can sync."
 }
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
@@ -47,5 +47,5 @@ if ($isAdmin) {
     Write-Host "  New-NetFirewallRule -DisplayName 'Daily Hub' -Direction Inbound -Protocol TCP -LocalPort $port -Action Allow -Profile Private"
 }
 
-Write-Host "Open the dashboard with scripts\windows\show_dashboard.ps1 (it starts the server and closes it with the window)."
+Write-Host "Open the dashboard with scripts\windows\show_dashboard.ps1 (it starts the server if it is not running)."
 Write-Host 'Next: enable wake timers (see docs/windows-setup.md) and run google_auth for the calendar.'

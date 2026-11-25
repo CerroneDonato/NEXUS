@@ -200,13 +200,38 @@ class ModelTest {
     }
 
     @Test
-    fun widgetRows_neverPlansMoreLinesThanFit() {
-        assertEquals(WidgetRows(0, 0, showTasks = false), widgetRows(1, events = 3, tasks = 5))
-        assertEquals(WidgetRows(0, 1, showTasks = true), widgetRows(2, events = 3, tasks = 5))
-        assertEquals(WidgetRows(0, 2, showTasks = true), widgetRows(3, events = 2, tasks = 4))
-        assertEquals(WidgetRows(2, 2, showTasks = true), widgetRows(6, events = 3, tasks = 5))
-        assertEquals(WidgetRows(1, 3, showTasks = true), widgetRows(12, events = 1, tasks = 3))
-        assertEquals(WidgetRows(3, 4, showTasks = true), widgetRows(20, events = 3, tasks = 4))
+    fun agendaSplit_neverPlansMoreLinesThanFit() {
+        assertEquals(AgendaSplit(0, 0), agendaSplit(0, events = 3, tasks = 5))
+        assertEquals(AgendaSplit(2, 0), agendaSplit(2, events = 3, tasks = 5))
+        assertEquals(AgendaSplit(5, 3), agendaSplit(9, events = 6, tasks = 3))
+        assertEquals(AgendaSplit(4, 4), agendaSplit(9, events = 6, tasks = 9))
+        assertEquals(AgendaSplit(1, 7), agendaSplit(9, events = 0, tasks = 9))
+        assertEquals(AgendaSplit(2, 1), agendaSplit(9, events = 2, tasks = 0))
+        for (lines in 0..30) {
+            val split = agendaSplit(lines, events = 7, tasks = 4)
+            val used = split.events + if (split.tasks > 0) split.tasks + 1 else 0
+            assertTrue("lines=$lines", used <= lines)
+        }
+    }
+
+    @Test
+    fun weekAgendaRows_dropsFinishedEventsAndLabelsEachDayOnce() {
+        val week = """
+            {"date":"2026-11-10","events":[],"tasks":[],"week":[
+              {"date":"2026-11-10","events":[
+                {"title":"Colazione","start":"2026-11-10T08:00:00+01:00","end":"2026-11-10T09:00:00+01:00","allDay":false},
+                {"title":"Riunione","start":"2026-11-10T10:00:00+01:00","end":"2026-11-10T11:00:00+01:00","allDay":false},
+                {"title":"Palestra","start":"2026-11-10T18:30:00+01:00","end":"2026-11-10T19:30:00+01:00","allDay":false}]},
+              {"date":"2026-11-11","events":[
+                {"title":"Dentista","start":"2026-11-11T09:00:00+01:00","end":"2026-11-11T10:00:00+01:00","allDay":false},
+                {"title":"Cena","start":"2026-11-11T20:00:00+01:00","end":"2026-11-11T22:00:00+01:00","allDay":false}]},
+              {"date":"2026-11-20","events":[
+                {"title":"Troppo avanti","start":"2026-11-20T09:00:00+01:00","allDay":false}]}]}
+        """.trimIndent()
+        val rows = weekAgendaRows(parseToday(week), OffsetDateTime.parse("2026-11-10T10:30:00+01:00"))
+        assertEquals(listOf("Riunione", "Palestra", "Dentista", "Cena"), rows.map { it.event.title })
+        assertEquals(listOf("Oggi", null, "Mer", null), rows.map { it.day })
+        assertEquals(listOf(true, false, false, false), rows.map { it.ongoing })
     }
 
     @Test

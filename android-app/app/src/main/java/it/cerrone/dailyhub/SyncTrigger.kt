@@ -7,9 +7,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 /**
  * When the phone talks to the PC, beyond the 15-minute background sync:
@@ -21,6 +24,7 @@ object SyncTrigger {
     private const val DEBOUNCE_MS = 1_000L
     private const val LIVE_MS = 15_000L
     private const val MAX_BACKOFF_MS = 120_000L
+    private const val MANUAL_LIMIT_MS = 25_000L
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var timer: Job? = null
@@ -41,17 +45,44 @@ object SyncTrigger {
 
     private suspend fun exchange(app: Context) {
         val ok = try {
-            val result = SyncClient(app).sync()
-            if (result.changed) {
-                LocalToday.refreshTasks(app)
-                NexusWidgets.updateAll(app)
-            }
-            result.ok
+            SyncClient(app).sync().ok
         } catch (e: Exception) {
             false
         }
         if (!ok) SyncWorker.syncSoon(app)
     }
+
+    /**
+     * The widget sync button: exchange with the PC like "Sincronizza ora", then reread calendar and weather,
+     * redraw every widget and tell an open app to reload. Bounded so the widget broadcast never times out;
+     * if the PC does not answer in time WorkManager finishes the job.
+     */
+    suspend fun manual(context: Context) {
+        val app = context.applicationContext
+        val prefs = Prefs(app)
+        prefs.manualSyncStarted = System.currentTimeMillis()
+        NexusWidgets.updateAll(app)
+        val ok = try {
+            withTimeout(MANUAL_LIMIT_MS) { if (prefs.canSync) SyncClient(app).sync().ok else true }
+        } catch (e: TimeoutCancellationException) {
+            false
+        } catch (e: Exception) {
+            false
+        }
+        try {
+            val json = LocalToday.refresh(app)
+            runCatching { Reminders.schedule(app, parseToday(json)) }
+        } catch (e: Exception) {
+            prefs.lastError = e.message ?: tr("Aggiornamento non riuscito", "Update failed")
+        }
+        prefs.manualSyncStarted = 0L
+        SyncSignal.applied.update { it + 1 }
+        NexusWidgets.updateAll(app)
+        if (!ok) SyncWorker.syncSoon(app)
+    }
+
+    fun isManualSyncRunning(prefs: Prefs): Boolean =
+        System.currentTimeMillis() - prefs.manualSyncStarted < MANUAL_LIMIT_MS + 5_000L
 
     /** Runs while the screen is visible (call it inside repeatOnLifecycle). Backs off while the PC cannot be reached. */
     suspend fun watch(context: Context) {

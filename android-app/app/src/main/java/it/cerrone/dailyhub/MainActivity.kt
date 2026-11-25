@@ -177,6 +177,7 @@ private fun HubScreen(prefs: Prefs, onOpenChat: (voice: Boolean) -> Unit, onOpen
                     status = SyncClient(context).exchange()
                     showSnapshot(LocalToday.refresh(context))
                 }
+                HubWidget.refresh(context)
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
             } catch (e: Exception) {

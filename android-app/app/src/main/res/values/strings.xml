@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Daily Hub</string>
     <string name="widget_name">Agenda e task</string>
-    <string name="widget_description">Impegni e task di oggi</string>
+    <string name="widget_description">Impegni dei prossimi 7 giorni e task</string>
     <string name="weather_widget_name">Meteo</string>
     <string name="weather_widget_description">Meteo attuale e prossimi giorni</string>
     <string name="lilith_widget_name">Lilith e sport</string>

@@ -145,28 +145,46 @@ fun focusEvent(events: List<EventInfo>, now: OffsetDateTime): FocusEvent? {
     return null
 }
 
-/** How many agenda and task lines the widget shows, so no row is ever cut in half. */
-data class WidgetRows(val events: Int, val tasks: Int, val showTasks: Boolean)
+/** One line of the agenda widget. [day] is set only on the first event of each day. */
+data class AgendaRow(val day: String?, val event: EventInfo, val ongoing: Boolean)
+
+/** Events from now to six days ahead, in order; today's finished events are left out. */
+fun weekAgendaRows(snapshot: TodaySnapshot, now: OffsetDateTime): List<AgendaRow> {
+    val today = snapshot.date
+    val days = snapshot.week.ifEmpty { listOf(DayAgenda(today, snapshot.events)) }
+    val rows = mutableListOf<AgendaRow>()
+    for (day in days.sortedBy { it.date }) {
+        if (day.date < today || day.date > today.plusDays(6)) continue
+        val upcoming = day.events.filter { event ->
+            day.date != today || event.allDay || (parseInstant(event.end) ?: parseInstant(event.start))?.isAfter(now) != false
+        }
+        upcoming.forEachIndexed { index, event ->
+            val start = parseInstant(event.start)
+            val ongoing = day.date == today && !event.allDay && start != null && !start.isAfter(now)
+            rows += AgendaRow(if (index == 0) dayLabel(day.date, today) else null, event, ongoing)
+        }
+    }
+    return rows
+}
+
+/** Whole lines given to the agenda and to the task list; [tasks] 0 hides the task section. */
+data class AgendaSplit(val events: Int, val tasks: Int)
 
 /**
- * Splits [rows] whole lines between the other events of today and the tasks.
- * The task section (title plus one line) comes first, up to two events follow,
- * then the remaining lines go to tasks and finally to more events.
+ * Splits [lines] between the week's events and the tasks, so no row is cut in half.
+ * An empty list still takes one line for its message; the task title takes one line.
+ * Events get about half first, tasks what they need, and events take whatever is left.
  */
-fun widgetRows(rows: Int, events: Int, tasks: Int): WidgetRows {
-    if (rows < 2) return WidgetRows(events = 0, tasks = 0, showTasks = false)
-    var left = rows - 2
-    var shownTasks = minOf(tasks, 1)
-    var shownEvents = 0
-    if (events > 0 && left >= 2) {
-        shownEvents = minOf(events, 2, left - 1)
-        left -= 1 + shownEvents
-    }
-    val moreTasks = minOf(tasks - shownTasks, left)
-    shownTasks += moreTasks
-    left -= moreTasks
-    if (shownEvents > 0) shownEvents += minOf(events - shownEvents, left)
-    return WidgetRows(shownEvents, shownTasks, showTasks = true)
+fun agendaSplit(lines: Int, events: Int, tasks: Int): AgendaSplit {
+    if (lines <= 0) return AgendaSplit(0, 0)
+    val eventNeed = maxOf(events, 1)
+    val taskNeed = maxOf(tasks, 1)
+    if (lines < 3) return AgendaSplit(minOf(eventNeed, lines), 0)
+    val budget = lines - 1
+    var shownEvents = minOf(eventNeed, maxOf(1, (budget + 1) / 2))
+    val shownTasks = minOf(taskNeed, budget - shownEvents)
+    shownEvents += minOf(eventNeed - shownEvents, budget - shownEvents - shownTasks)
+    return AgendaSplit(shownEvents, shownTasks)
 }
 
 /** A quiet notification to post at [atMillis]; [key] identifies the event across refreshes. */

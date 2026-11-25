@@ -99,6 +99,11 @@ class Prefs(context: Context) {
         get() = prefs.getString(KEY_SYNC_AT, null)
         set(value) = prefs.edit { putString(KEY_SYNC_AT, value) }
 
+    /** When the widget sync button was last pressed; the widget shows "Sync…" for a short while after it. */
+    var manualSyncStarted: Long
+        get() = prefs.getLong(KEY_MANUAL_SYNC, 0L)
+        set(value) = prefs.edit { putLong(KEY_MANUAL_SYNC, value) }
+
     /** JSON array of the last sync attempts, newest first (see [SyncHistory]). */
     var syncLogJson: String
         get() = prefs.getString(KEY_SYNC_LOG, "[]") ?: "[]"
@@ -127,6 +132,7 @@ class Prefs(context: Context) {
     companion object {
         const val DEFAULT_MODEL = "gemini-3.5-flash-lite"
         private const val KEY_MODEL = "gemini_model"
+        private const val KEY_MANUAL_SYNC = "manual_sync_started"
         private const val KEY_LANGUAGE = "language"
         private const val KEY_URL = "hub_url"
         const val KEY_TOKEN = "token"
